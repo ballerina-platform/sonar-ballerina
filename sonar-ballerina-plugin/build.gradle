@@ -1,0 +1,249 @@
+/*
+ * Copyright (c) 2024, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import java.util.jar.JarInputStream
+
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'checkstyle'
+    id "com.github.spotbugs"
+    id "de.undercouch.download"
+    id "com.github.johnrengelman.shadow"
+    id "io.spring.dependency-management"
+}
+
+group = "${group}"
+version = "${sonarPluginVersion}"
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    gradlePluginPortal()
+
+    maven {
+        url = 'https://repox.jfrog.io/repox/plugins.gradle.org/'
+    }
+
+    maven {
+        url = uri("https://plugins.gradle.org/m2/")
+    }
+}
+
+dependencies {
+    compileOnly group: 'org.sonarsource.api.plugin', name: 'sonar-plugin-api', version: "${sonarPluginAPIVersion}"
+
+    implementation group:'javax.annotation', name:'javax.annotation-api', version: "${javaAnnotationAPIVersion}"
+    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-commons', version: "${sonarAnalyzerCommonsVersion}"
+    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-xml-parsing', version: "${sonarAnalyzerCommonsVersion}"
+    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-regex-parsing', version: "${sonarAnalyzerCommonsVersion}"
+    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-performance-measure', version: "${sonarAnalyzerCommonsVersion}"
+    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-recognizers', version: "${sonarAnalyzerCommonsVersion}"
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: "${slf4jVersion}"
+    implementation group: 'ch.qos.logback', name: 'logback-classic', version: "${logbackVersion}"
+    implementation "com.google.code.gson:gson:${gsonVersion}"
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
+
+    checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: "${puppycrawlCheckstyleVersion}"
+
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: "${junitVersion}"
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: "${junitVersion}"
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: "${junitVersion}"
+    testImplementation group: 'org.assertj', name: 'assertj-core', version: "${assertJCoreVersion}"
+    testImplementation group: 'org.mockito', name: 'mockito-core', version: "${mockitoCoreVersion}"
+    testImplementation group: 'io.mockk', name: 'mockk', version: "${mockkVersion}"
+    testImplementation group: 'io.github.classgraph', name: 'classgraph', version: "${classGraphVersion}"
+    testImplementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-test-commons', version: "${sonarAnalyzerCommonsVersion}"
+    testImplementation group: 'org.sonarsource.orchestrator', name: 'sonar-orchestrator', version: "${sonarOrchestratorVersion}"
+    testImplementation group: 'org.sonarsource.sonarlint.core', name: 'sonarlint-core', version: "${sonarLintCoreVersion}"
+    testImplementation group: 'org.sonarsource.sonarqube', name: 'sonar-ws', version: "${sonarQubeVersion}"
+    testImplementation group: 'org.sonarsource.sonarqube', name: 'sonar-plugin-api-impl', version: "${sonarQubeVersion}"
+}
+
+// Setting up checkstyle
+task downloadCheckstyleRuleFiles(type: Download) {
+    src([
+            'https://raw.githubusercontent.com/wso2/code-quality-tools/v1.4/checkstyle/jdk-17/checkstyle.xml',
+            'https://raw.githubusercontent.com/wso2/code-quality-tools/v1.4/checkstyle/jdk-17/suppressions.xml'
+    ])
+    overwrite false
+    onlyIfNewer true
+    dest buildDir
+}
+
+artifacts.add('default', file("${project.buildDir}/checkstyle.xml")) {
+    builtBy(downloadCheckstyleRuleFiles)
+}
+
+artifacts.add('default', file("${project.buildDir}/suppressions.xml")) {
+    builtBy(downloadCheckstyleRuleFiles)
+}
+
+def excludePattern = '**/module-info.java'
+tasks.withType(Checkstyle) {
+    exclude excludePattern
+}
+
+checkstyle {
+    toolVersion "10.12.1"
+    configFile rootProject.file("${project.buildDir}/checkstyle.xml")
+    configProperties = ["suppressionFile": file("${project.buildDir}/build/suppressions.xml")]
+}
+
+checkstyleTest {
+    enabled = true
+}
+
+checkstyleMain.dependsOn(downloadCheckstyleRuleFiles)
+checkstyleTest.dependsOn(downloadCheckstyleRuleFiles)
+
+// Setting up spotbugs
+spotbugsMain {
+    effort "max"
+    reportLevel "low"
+
+    reportsDir = file("$project.buildDir/reports/spotbugs")
+
+    reports {
+        html.enabled true
+        text.enabled = true
+    }
+
+    def excludeFile = file("${projectDir}/spotbugs-exclude.xml")
+    if (excludeFile.exists()) {
+        excludeFilter = excludeFile
+    }
+}
+
+spotbugsTest {
+    effort = "max"
+    reportLevel = "low"
+
+    reportsDir = file("$project.buildDir/reports/spotbugs")
+
+    reports {
+        html.enabled true
+        text.enabled = true
+    }
+
+    def excludeFile = file("${projectDir}/spotbugs-exclude.xml")
+    if (excludeFile.exists()) {
+        excludeFilter = excludeFile
+    }
+}
+
+// Configurations for testing
+tasks.test {
+    useJUnitPlatform()
+}
+
+configurations {
+    testImplementation {
+        extendsFrom compileOnly
+    }
+}
+
+// JAR configurations
+ext {
+    set("buildNumber", System.getProperty("buildNumber"))
+}
+
+tasks.jar {
+    manifest {
+        def displayVersion = (project.property("buildNumber") == null ? project.version : project.version.substring(0, project.version.lastIndexOf('.')) + " (build ${project.property("buildNumber")})")
+        def buildDate = new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        attributes(
+                'Build-Time': buildDate,
+                'Implementation-Build': 'git rev-parse HEAD'.execute().text.trim(),
+                'Plugin-BuildDate': buildDate,
+                'Plugin-ChildFirstClassLoader': 'false',
+                'Plugin-Class': 'io.ballerina.sonar.BallerinaPlugin',
+                'Plugin-Description': 'Code Analyzer for Ballerina',
+                'Plugin-Developers': 'WSO2',
+                'Plugin-Display-Version': displayVersion,
+                'Plugin-Key': 'ballerina',
+                'Plugin-License': 'Apache-2.0',
+                'Plugin-Name': 'Ballerina Code Quality and Security',
+                'Plugin-Organization': 'WSO2',
+                'Plugin-OrganizationUrl': 'https://wso2.com/',
+                'Plugin-SourcesUrl': 'https://ballerina.io/',
+                'Plugin-Version': project.version,
+                'Plugin-RequiredForLanguages': 'ballerina',
+                'Sonar-Version': '6.7',
+                'Version': "${project.version}",
+                'Jre-Min-Version': '17'
+        )
+    }
+}
+
+def shadowJar = tasks.shadowJar
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.allSource
+}
+
+tasks.shadowJar {
+    minimize {}
+
+    exclude 'ch/**'
+    exclude 'javax/**'
+    exclude 'license/**'
+    exclude 'META-INF/maven/**'
+    exclude 'META-INF/versions/**'
+    exclude 'META-INF/LICENSE'
+    exclude 'META-INF/LICENSE.txt'
+    exclude 'META-INF/NOTICE'
+    exclude 'META-INF/NOTICE.txt'
+    exclude 'META-INF/services/**'
+
+    doLast {
+        enforceJarSizeAndCheckContent(shadowJar.archiveFile.get().asFile, 10L, 500_000_000L)
+    }
+}
+
+artifacts {
+    archives shadowJar
+}
+
+static void enforceJarSizeAndCheckContent(File file, long minSize, long maxSize) {
+    long size = file.length()
+    if (size < minSize) {
+        throw new GradleException("${file.path} size ($size) too small. Min is $minSize")
+    } else if (size > maxSize) {
+        throw new GradleException("${file.path} size ($size) too large. Max is $maxSize")
+    }
+    checkJarEntriesPathUniqueness file
+}
+
+static void checkJarEntriesPathUniqueness(File file) {
+    def allNames = new HashSet()
+    def duplicatedNames = new HashSet()
+    file.withInputStream { input ->
+        new JarInputStream(input).withCloseable { jarInput ->
+            for (def jarEntry = jarInput.nextJarEntry; jarEntry != null; jarEntry = jarInput.nextJarEntry) {
+                if (!allNames.add(jarEntry.name)) {
+                    duplicatedNames.add jarEntry.name
+                }
+            }
+        }
+    }
+    if (!duplicatedNames.empty) {
+        throw new GradleException("Duplicated entries in the jar: '${file.path}': ${duplicatedNames.join(', ')}")
+    }
+}
