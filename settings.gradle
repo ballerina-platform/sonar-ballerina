@@ -18,13 +18,10 @@
 
 pluginManagement {
     plugins {
-        id 'java'
         id 'java-library'
-        id 'application'
         id 'checkstyle'
         id "com.github.spotbugs" version "${spotbugsVersion}"
         id "de.undercouch.download" version "${downloadPluginVersion}"
-        id "com.github.johnrengelman.shadow" version "${shadowPluginVersion}"
         id "io.spring.dependency-management" version "${springDependencyManagementVersion}"
     }
 }

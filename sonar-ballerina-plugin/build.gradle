@@ -19,12 +19,10 @@
 import java.util.jar.JarInputStream
 
 plugins {
-    id 'java'
     id 'java-library'
     id 'checkstyle'
     id "com.github.spotbugs"
     id "de.undercouch.download"
-    id "com.github.johnrengelman.shadow"
     id "io.spring.dependency-management"
 }
 
@@ -35,10 +33,6 @@ repositories {
     mavenLocal()
     mavenCentral()
     gradlePluginPortal()
-
-    maven {
-        url = 'https://repox.jfrog.io/repox/plugins.gradle.org/'
-    }
 
     maven {
         url = uri("https://plugins.gradle.org/m2/")
@@ -54,16 +48,12 @@ dependencies {
     implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-regex-parsing', version: "${sonarAnalyzerCommonsVersion}"
     implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-performance-measure', version: "${sonarAnalyzerCommonsVersion}"
     implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-recognizers', version: "${sonarAnalyzerCommonsVersion}"
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: "${slf4jVersion}"
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: "${logbackVersion}"
     implementation "com.google.code.gson:gson:${gsonVersion}"
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
 
     checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: "${puppycrawlCheckstyleVersion}"
 
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: "${junitVersion}"
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: "${junitVersion}"
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: "${junitVersion}"
+    testImplementation group: 'org.testng', name: 'testng', version: "${testngVersion}"
     testImplementation group: 'org.assertj', name: 'assertj-core', version: "${assertJCoreVersion}"
     testImplementation group: 'org.mockito', name: 'mockito-core', version: "${mockitoCoreVersion}"
     testImplementation group: 'io.mockk', name: 'mockk', version: "${mockkVersion}"
@@ -100,7 +90,7 @@ tasks.withType(Checkstyle) {
 }
 
 checkstyle {
-    toolVersion "10.12.1"
+    toolVersion puppycrawlCheckstyleVersion
     configFile rootProject.file("${project.buildDir}/checkstyle.xml")
     configProperties = ["suppressionFile": file("${project.buildDir}/build/suppressions.xml")]
 }
@@ -149,7 +139,9 @@ spotbugsTest {
 
 // Configurations for testing
 tasks.test {
-    useJUnitPlatform()
+    useTestNG() {
+        suites 'src/test/resources/testng.xml'
+    }
 }
 
 configurations {
@@ -164,6 +156,8 @@ ext {
 }
 
 tasks.jar {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
     manifest {
         def displayVersion = (project.property("buildNumber") == null ? project.version : project.version.substring(0, project.version.lastIndexOf('.')) + " (build ${project.property("buildNumber")})")
         def buildDate = new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
@@ -189,36 +183,29 @@ tasks.jar {
                 'Jre-Min-Version': '17'
         )
     }
-}
 
-def shadowJar = tasks.shadowJar
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
-    archiveClassifier.set('sources')
-    from sourceSets.main.allSource
-}
-
-tasks.shadowJar {
-    minimize {}
-
-    exclude 'ch/**'
-    exclude 'javax/**'
-    exclude 'license/**'
-    exclude 'META-INF/maven/**'
-    exclude 'META-INF/versions/**'
-    exclude 'META-INF/LICENSE'
-    exclude 'META-INF/LICENSE.txt'
-    exclude 'META-INF/NOTICE'
-    exclude 'META-INF/NOTICE.txt'
-    exclude 'META-INF/services/**'
+    exclude('com/ctc/**')
+    exclude('javax/**')
+    exclude('license/**')
+    exclude('META-INF/maven/**')
+    exclude('META-INF/versions/**')
+    exclude('META-INF/LICENSE')
+    exclude('META-INF/LICENSE.txt')
+    exclude('META-INF/NOTICE')
+    exclude('META-INF/NOTICE.txt')
+    exclude('META-INF/services/**')
+    exclude('org/apache/xerces/**')
+    exclude('org/apache/xml/**')
+    exclude('org/sonarsource/performance/**')
+    exclude('module-info.class')
 
     doLast {
-        enforceJarSizeAndCheckContent(shadowJar.archiveFile.get().asFile, 10L, 500_000_000L)
+        enforceJarSizeAndCheckContent(archiveFile.get().asFile, 10L, 500_000_000L)
     }
-}
-
-artifacts {
-    archives shadowJar
 }
 
 static void enforceJarSizeAndCheckContent(File file, long minSize, long maxSize) {

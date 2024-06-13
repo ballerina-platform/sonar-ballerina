@@ -7,7 +7,7 @@ on:
 
 jobs:
   ubuntu_build:
-    name: Ubuntu Build
+    name: Build on Ubuntu with tests
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.head_ref }}-ubuntu
@@ -33,7 +33,7 @@ jobs:
         run: ./gradlew build
 
   windows_build:
-    name: Windows Build
+    name: Build on Windows with tests
     runs-on: windows-latest
     concurrency:
       group: ${{ github.head_ref }}-windows
