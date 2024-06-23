@@ -1,0 +1,50 @@
+[
+  {
+    "startLine": 20,
+    "startLineOffset": 17,
+    "endLine": 20,
+    "endLineOffset": 39,
+    "ruleID": "B1",
+    "message": "Avoid checkpanic",
+    "ruleKind": "CODE_SMELL",
+    "source": "BUILT_IN",
+    "fileName": "ballerina_project/main.bal",
+    "filePath": "__file_path__"
+  },
+  {
+    "startLine": 16,
+    "startLineOffset": 0,
+    "endLine": 21,
+    "endLineOffset": 1,
+    "ruleID": "ballerina/example_module_static_code_analyzer:1",
+    "message": "rule 1",
+    "ruleKind": "CODE_SMELL",
+    "source": "BUILT_IN",
+    "fileName": "ballerina_project/main.bal",
+    "filePath": "__file_path__"
+  },
+  {
+    "startLine": 16,
+    "startLineOffset": 0,
+    "endLine": 21,
+    "endLineOffset": 1,
+    "ruleID": "exampleOrg/example_module_static_code_analyzer:1",
+    "message": "rule 1",
+    "ruleKind": "CODE_SMELL",
+    "source": "EXTERNAL",
+    "fileName": "ballerina_project/main.bal",
+    "filePath": "__file_path__"
+  },
+  {
+    "startLine": 16,
+    "startLineOffset": 0,
+    "endLine": 21,
+    "endLineOffset": 1,
+    "ruleID": "ballerinax/example_module_static_code_analyzer:1",
+    "message": "rule 1",
+    "ruleKind": "CODE_SMELL",
+    "source": "BUILT_IN",
+    "fileName": "ballerina_project/main.bal",
+    "filePath": "__file_path__"
+  }
+]

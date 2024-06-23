@@ -28,3 +28,4 @@ pluginManagement {
 
 rootProject.name = 'sonar-ballerina'
 include 'sonar-ballerina-plugin'
+include 'sonar-platform-plugin'

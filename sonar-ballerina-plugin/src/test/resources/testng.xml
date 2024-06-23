@@ -24,6 +24,7 @@ under the License.
     <!-- Ballerina SonarQube Plugin Test Cases. -->
     <test name="sonar-ballerina-test-suite">
         <classes>
+            <class name="io.ballerina.sonar.BallerinaSensorTest"/>
         </classes>
     </test>
 </suite>

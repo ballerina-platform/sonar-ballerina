@@ -1,0 +1,52 @@
+<p><b>Why is this an issue?</b></p>
+
+<p>
+    When “checkpanic” is used, the program terminates abruptly with a panic unless
+    it’s handled explicitly along the call stack.
+</p>
+
+<pre>
+    // Noncompliant
+    public function checkResult() {
+        json result = checkpanic getResult();
+    }
+
+    public function getResult() returns json|error {
+        // ...
+    }
+</pre>
+
+<p>The solution can be to</p>
+
+<ul>
+    <li>Check and handle the error explicitly</li></br>
+    <pre>
+    // Compliant
+    public function checkResult() {
+        json|error result = getResult();
+        if (result is error) {
+            // handle error
+        }
+    }
+
+    public function getResult() returns json|error {
+        // ...
+    }
+    </pre></br>
+    <li>
+        Make use of check keyword, which returns errors directly in contrast to
+        checkpanic and panicking if an expression or action evaluates to an error.
+    </li></br>
+    <pre>
+    // Compliant
+    public function checkResult() returns error?{
+        json result = check getResult();
+    }
+
+    public function getResult() returns json|error {
+        // ...
+    }
+    </pre>
+</ul>
+
+<p>This rule raises an issue when a function has checkpanic keyword usage</p>
