@@ -145,13 +145,13 @@ tasks.test {
 
     doFirst {
         def targetJarDir = Paths.get("src", "test", "resources", "test-resources", "ballerina-project").toFile()
-        def targetJar = new File(targetJarDir, "sonar-platform-plugin-1.0.jar")
+        def targetJar = new File(targetJarDir, "sonar-platform-plugin-${version}.jar")
         if (targetJar.exists()) {
             delete targetJar
         }
 
         def platformPluginJar = project(":sonar-platform-plugin").buildDir.toPath()
-                .resolve("libs/sonar-platform-plugin-1.0.jar").toFile()
+                .resolve("libs/sonar-platform-plugin-${version}.jar").toFile()
         copy {
             from platformPluginJar
             into targetJarDir

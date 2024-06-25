@@ -18,6 +18,11 @@
 
 package io.ballerina.sonar;
 
+/**
+ * {@code Constants} contains the constant variables used within the SonarQube Ballerina plugin.
+ *
+ * @since 0.1.0
+ */
 public class Constants {
     private Constants() {
     }
@@ -32,6 +37,7 @@ public class Constants {
     static final String RULE_REPOSITORY_KEY = "ballerina";
     static final String RULE_REPOSITORY_NAME = "BallerinaAnalyzer";
     static final String RULE_RESOURCE_FOLDER = "io/ballerina/sonar";
+    static final String RULE_KEY = "key";
 
     // Property definition constants
     static final String FILE_SUFFIXES_KEY = "sonar.ballerina.file.suffixes";

@@ -17,41 +17,70 @@
 
 package io.ballerina.sonar;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import org.sonar.api.SonarRuntime;
 import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.analyzer.commons.RuleMetadataLoader;
 
-import static io.ballerina.sonar.BallerinaChecks.CORE_RULES;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
 import static io.ballerina.sonar.Constants.JSON_PROFILE_PATH;
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
+import static io.ballerina.sonar.Constants.RULE_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_NAME;
 import static io.ballerina.sonar.Constants.RULE_RESOURCE_FOLDER;
 
+/**
+ * Represents the implementation of the {@link RulesDefinition} class for Ballerina.
+ *
+ * @since 0.1.0
+ */
 public class BallerinaRulesDefinition implements RulesDefinition {
     private final SonarRuntime runtime;
+    private final Gson gson = new Gson();
+
     public BallerinaRulesDefinition(SonarRuntime runtime) {
         this.runtime = runtime;
     }
 
-    /**
-     * Define the rules for the Ballerina language.
-     * <p>There are two ways to define a rule for a language: </p>
-     *  <ol>
-     *     <li>Add rules by the annotated class (Requires defining the Java class visitors in a checks folder)</li>
-     *     <li>Add rules by the rule keys</li>
-     *  </ol>
-     * <p>Since in Ballerina the visitors are defined in the Ballerina static code analysis tool rule keys are used </p>
-     *
-     * @param context The rule definition context
-     */
     @Override
     public void define(Context context) {
         NewRepository repository = context.createRepository(RULE_REPOSITORY_KEY, LANGUAGE_KEY);
         repository.setName(RULE_REPOSITORY_NAME);
         RuleMetadataLoader ruleMetadataLoader = new RuleMetadataLoader(RULE_RESOURCE_FOLDER, JSON_PROFILE_PATH,
                 runtime);
-        ruleMetadataLoader.addRulesByRuleKey(repository, CORE_RULES);
+        ruleMetadataLoader.addRulesByRuleKey(repository, loadRuleKeys());
         repository.done();
+    }
+
+    private List<String> loadRuleKeys() {
+        InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream("/ruleKeys.json");
+        StringBuilder builder = new StringBuilder();
+        if (inputStream != null) {
+            try (
+                    InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+                    BufferedReader br = new BufferedReader(inputStreamReader)
+            ) {
+                String content = br.readLine();
+                builder.append(content);
+                while ((content = br.readLine()) != null) {
+                    builder.append(System.lineSeparator()).append(content);
+                }
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
+        JsonArray rules = gson.fromJson(builder.toString(), JsonArray.class);
+        List<String> ruleKeys = new ArrayList<>();
+        rules.forEach(rule -> ruleKeys.add(rule.getAsJsonObject().get(RULE_KEY).getAsString()));
+        return ruleKeys;
     }
 }

@@ -19,23 +19,12 @@ package io.ballerina.sonar;
 
 import org.sonar.api.Plugin;
 
+/**
+ * Represents the implementation of the {@link Plugin} class for Ballerina.
+ *
+ * @since 0.1.0
+ */
 public class BallerinaPlugin implements Plugin {
-
-    /**
-     * <p> Represents the entry point for introducing SonarQube plugins. </p>
-     *
-     * <p>
-     * This class should be defined in the MANIFEST file for SonarQube to engage the plugin. This method is engaged only
-     * after the SonarQube:
-     * </p>
-     * <ul>
-     *     <li>Web server starts</li>
-     *     <li>Compute engine starts</li>
-     *     <li>Sonar Scanner starts</li>
-     * </ul>
-     *
-     * @param context The sonar plugin context that accepts configurations
-     */
     @Override
     public void define(Context context) {
         context.addExtensions(

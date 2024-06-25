@@ -25,6 +25,11 @@ import static io.ballerina.sonar.Constants.FILE_SUFFIXES_KEY;
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
 import static io.ballerina.sonar.Constants.LANGUAGE_NAME;
 
+/**
+ * Represents the implementation of the {@link AbstractLanguage} class for Ballerina.
+ *
+ * @since 0.1.0
+ */
 public class BallerinaLanguage extends AbstractLanguage {
     private final Configuration configuration;
 
@@ -38,8 +43,7 @@ public class BallerinaLanguage extends AbstractLanguage {
         String[] suffixes = configuration.getStringArray(FILE_SUFFIXES_KEY);
         if (suffixes == null || suffixes.length == 0) {
             return FILE_SUFFIXES_DEFAULT_VALUE.split(",");
-        } else {
-            return suffixes;
         }
+        return suffixes;
     }
 }

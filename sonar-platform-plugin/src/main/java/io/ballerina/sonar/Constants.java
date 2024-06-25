@@ -20,6 +20,11 @@
 
 package io.ballerina.sonar;
 
+/**
+ * {@code Constants} contains the constant variables used within the SonarQube Platform plugin.
+ *
+ * @since 0.1.0
+ */
 public class Constants {
     private Constants() {
     }

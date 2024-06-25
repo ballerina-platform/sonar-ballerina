@@ -25,18 +25,12 @@ import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
 import static io.ballerina.sonar.Constants.PROFILE_NAME;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
 
+/**
+ * Represents the implementation of the {@link BuiltInQualityProfilesDefinition} class for Ballerina.
+ *
+ * @since 0.1.0
+ */
 public class BallerinaProfileDefinition implements BuiltInQualityProfilesDefinition {
-
-    /**
-     * <p> Define the quality profile for Ballerina. </p>
-     *
-     * <p>
-     * Quality profiles are shown in the SonarQube dashboard. They are required to be activated for analysis issues to
-     * be reported.
-     * </p>
-     *
-     * @param context The quality profile definition context
-     */
     @Override
     public void define(Context context) {
         NewBuiltInQualityProfile ballerinaQualityProfile = context.createBuiltInQualityProfile(PROFILE_NAME,

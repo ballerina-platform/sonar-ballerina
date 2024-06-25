@@ -63,6 +63,11 @@ import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
 import static io.ballerina.sonar.Constants.SONAR_SCANNER_OFFSET;
 import static io.ballerina.sonar.Constants.VULNERABILITY;
 
+/**
+ * Represents the implementation of the {@link Sensor} class for Ballerina.
+ *
+ * @since 0.1.0
+ */
 class BallerinaSensor implements Sensor {
     private final Logger logger = Loggers.get(BallerinaSensor.class);
     private final BallerinaLanguage language;
@@ -173,28 +178,27 @@ class BallerinaSensor implements Sensor {
         }
     }
 
-    public boolean reportAnalysisIssues(SensorContext context,
-                                        JsonArray analysisIssues,
+    public boolean reportAnalysisIssues(SensorContext context, JsonArray analysisIssues,
                                         Map<String, InputFile> pathAndInputFiles) {
-        boolean reportingSuccessful = false;
-        if (analysisIssues != null) {
-            for (JsonElement issueElement : analysisIssues) {
-                JsonObject issue = issueElement.getAsJsonObject();
-                String absoluteFilePath = issue.get(ISSUE_FILE_PATH).getAsString();
-                InputFile inputFile = pathAndInputFiles.get(absoluteFilePath);
-                String issueType = issue.get(ISSUE_SOURCE).getAsString();
-                switch (issueType) {
-                    case BUILT_IN -> reportIssue(inputFile, context, issue);
-                    case EXTERNAL -> reportExternalIssue(inputFile, context, issue);
-                    default -> logger.info("Invalid Issue Format!");
-                }
-            }
-            reportingSuccessful = true;
+        if (analysisIssues == null) {
+            return false;
         }
-        return reportingSuccessful;
+        for (JsonElement issueElement : analysisIssues) {
+            JsonObject issue = issueElement.getAsJsonObject();
+            String absoluteFilePath = issue.get(ISSUE_FILE_PATH).getAsString();
+            InputFile inputFile = pathAndInputFiles.get(absoluteFilePath);
+            String issueType = issue.get(ISSUE_SOURCE).getAsString();
+            switch (issueType) {
+                case BUILT_IN -> reportIssue(inputFile, context, issue, true);
+                case EXTERNAL -> reportIssue(inputFile, context, issue, false);
+                default -> logger.info("Invalid Issue Format!");
+            }
+        }
+        return true;
     }
 
-    public void reportIssue(InputFile inputFile, SensorContext context, JsonObject balScanOutput) {
+    public void reportIssue(InputFile inputFile, SensorContext context, JsonObject balScanOutput,
+                             boolean builtInIssue) {
         String ruleID = balScanOutput.get(ISSUE_RULE_ID).getAsString();
         String message = balScanOutput.get(ISSUE_MESSAGE).getAsString();
         int startLine = balScanOutput.get(ISSUE_START_LINE).getAsInt();
@@ -202,27 +206,22 @@ class BallerinaSensor implements Sensor {
         int endLine = balScanOutput.get(ISSUE_END_LINE).getAsInt();
         int endLineOffset = balScanOutput.get(ISSUE_END_LINE_OFFSET).getAsInt();
         RuleKey ruleKey = RuleKey.of(RULE_REPOSITORY_KEY, ruleID);
-        context.newIssue()
-                .forRule(ruleKey)
-                .at(context.newIssue()
-                        .newLocation()
-                        .on(inputFile)
-                        .at(inputFile.newRange(startLine + SONAR_SCANNER_OFFSET,
-                                startLineOffset,
-                                endLine + SONAR_SCANNER_OFFSET,
-                                endLineOffset))
-                        .message(message)
-                )
-                .save();
-    }
+        if (builtInIssue) {
+            context.newIssue()
+                    .forRule(ruleKey)
+                    .at(context.newIssue()
+                            .newLocation()
+                            .on(inputFile)
+                            .at(inputFile.newRange(startLine + SONAR_SCANNER_OFFSET,
+                                    startLineOffset,
+                                    endLine + SONAR_SCANNER_OFFSET,
+                                    endLineOffset))
+                            .message(message)
+                    )
+                    .save();
+            return;
+        }
 
-    public void reportExternalIssue(InputFile inputFile, SensorContext context, JsonObject balScanOutput) {
-        String ruleID = balScanOutput.get(ISSUE_RULE_ID).getAsString();
-        String message = balScanOutput.get(ISSUE_MESSAGE).getAsString();
-        int startLine = balScanOutput.get(ISSUE_START_LINE).getAsInt();
-        int startLineOffset = balScanOutput.get(ISSUE_START_LINE_OFFSET).getAsInt();
-        int endLine = balScanOutput.get(ISSUE_END_LINE).getAsInt();
-        int endLineOffset = balScanOutput.get(ISSUE_END_LINE_OFFSET).getAsInt();
         String ruleKind = balScanOutput.get(ISSUE_RULE_KIND).getAsString();
         RuleType ruleType;
         switch (ruleKind) {
@@ -230,12 +229,7 @@ class BallerinaSensor implements Sensor {
             case VULNERABILITY -> ruleType = RuleType.VULNERABILITY;
             default -> ruleType = RuleType.CODE_SMELL;
         }
-
         if (!externalRules.contains(ruleID)) {
-            /**
-             * Create a new ad hoc rule
-             * {@link org.sonar.api.batch.sensor.rule.internal.DefaultAdHocRule}
-             * */
             context.newAdHocRule()
                     .engineId("ballerina_external_analyzer")
                     .ruleId(ruleID)
@@ -247,9 +241,6 @@ class BallerinaSensor implements Sensor {
             externalRules.add(ruleID);
         }
 
-        /**
-         * {@link org.sonar.api.batch.sensor.issue.internal.DefaultExternalIssue}
-         * */
         context.newExternalIssue()
                 .engineId("ballerina_external_analyzer")
                 .ruleId(ruleID)

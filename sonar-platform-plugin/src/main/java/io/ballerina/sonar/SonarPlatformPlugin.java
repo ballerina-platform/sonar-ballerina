@@ -39,7 +39,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.ballerina.sonar.Constants.RULE_PREFIX;
 import static io.ballerina.sonar.Constants.END_LINE;
 import static io.ballerina.sonar.Constants.END_LINE_OFFSET;
 import static io.ballerina.sonar.Constants.FILE_NAME;
@@ -49,11 +48,17 @@ import static io.ballerina.sonar.Constants.ISSUE_FILE_PATH;
 import static io.ballerina.sonar.Constants.MESSAGE;
 import static io.ballerina.sonar.Constants.RULE_ID;
 import static io.ballerina.sonar.Constants.RULE_KIND;
+import static io.ballerina.sonar.Constants.RULE_PREFIX;
 import static io.ballerina.sonar.Constants.SOURCE;
 import static io.ballerina.sonar.Constants.START_LINE;
 import static io.ballerina.sonar.Constants.PLATFORM_NAME;
 import static io.ballerina.sonar.Constants.START_LINE_OFFSET;
 
+/**
+ * Represents the implementation of the {@link StaticCodeAnalysisPlatformPlugin} for reporting issues to SonarQube.
+ *
+ * @since 0.1.0
+ */
 public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     private PlatformPluginContext platformPluginContext;
     private final List<String> processBuilderArguments = new ArrayList<>();
@@ -95,27 +100,29 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     @Override
     public void onScan(List<Issue> issues) {
         saveIssues(ISSUE_FILE_PATH, issues);
-        if (!platformPluginContext.initiatedByPlatform()) {
-            processBuilderArguments.add("-DanalyzedResultsPath=" + Path.of(ISSUE_FILE_PATH).toAbsolutePath());
-            String sonarProjectPropertiesPath = platformPluginContext.platformArgs()
-                    .getOrDefault("sonarProjectPropertiesPath", null);
-            if (sonarProjectPropertiesPath != null) {
-                processBuilderArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
-            }
+        if (platformPluginContext.initiatedByPlatform()) {
+            return;
+        }
 
-            processBuilder.command(processBuilderArguments);
-            processBuilder.inheritIO();
-            try {
-                Process process = processBuilder.start();
-                int exitCode = process.waitFor();
-                if (exitCode == 0) {
-                    outputStream.println("Reporting successful!");
-                } else {
-                    outputStream.println("Reporting failed!");
-                }
-            } catch (IOException | InterruptedException ex) {
-                throw new RuntimeException(ex);
+        processBuilderArguments.add("-DanalyzedResultsPath=" + Path.of(ISSUE_FILE_PATH).toAbsolutePath());
+        String sonarProjectPropertiesPath = platformPluginContext.platformArgs()
+                .getOrDefault("sonarProjectPropertiesPath", null);
+        if (sonarProjectPropertiesPath != null) {
+            processBuilderArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
+        }
+
+        processBuilder.command(processBuilderArguments);
+        processBuilder.inheritIO();
+        try {
+            Process process = processBuilder.start();
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                outputStream.println("Reporting successful!");
+            } else {
+                outputStream.println("Reporting failed!");
             }
+        } catch (IOException | InterruptedException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
