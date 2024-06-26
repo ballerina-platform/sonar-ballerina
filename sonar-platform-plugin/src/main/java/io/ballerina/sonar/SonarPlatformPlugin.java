@@ -154,7 +154,7 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String jsonOutput = gson.toJson(issuesAsJson);
-        File destination = new File(fileName);
+        File destination = new File(Path.of(System.getProperty("user.dir")).resolve(fileName).toString());
         try (FileWriter writer = new FileWriter(destination, StandardCharsets.UTF_8)) {
             writer.write(jsonOutput);
         } catch (IOException ex) {

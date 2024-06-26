@@ -57,14 +57,64 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         // Append mock settings file
         Settings settings = context.settings().appendProperty("analyzedResultsPath", filePath.toString());
         context.setSettings((MapSettings) settings);
-        BallerinaSensor sensor = sensor();
+
 
         // Add mock input files
         InputFile ballerinaFile = createInputFileFromPath("main.bal");
         context.fileSystem().add(ballerinaFile);
 
         // Trigger analysis
+        BallerinaSensor sensor = sensor();
         sensor.execute(context);
+        if (Files.exists(filePath)) {
+            Files.delete(filePath);
+        }
+        List<Issue> issues = context.allIssues().stream().toList();
+        Assert.assertEquals(issues.size(), 3);
+        assertIssue(issues.get(0), "ballerina:Ballerina1", "Avoid checkpanic",
+                21, 17, 21, 39);
+        assertIssue(issues.get(1), "ballerina:ballerina/example_module_static_code_analyzer:1", "rule 1",
+                17, 0, 22, 1);
+        assertIssue(issues.get(2), "ballerina:ballerinax/example_module_static_code_analyzer:1", "rule 1",
+                17, 0, 22, 1);
+        List<AdHocRule> adHocRules = context.allAdHocRules().stream().toList();
+        Assert.assertEquals(adHocRules.size(), 1);
+        AdHocRule adHocRule = adHocRules.get(0);
+        Assert.assertEquals(adHocRule.severity(), Severity.MAJOR);
+        Assert.assertEquals(adHocRule.type(), RuleType.CODE_SMELL);
+        Assert.assertEquals(adHocRule.name(), "exampleOrg/example_module_static_code_analyzer:1");
+        Assert.assertEquals(adHocRule.description(), "rule 1");
+        Assert.assertEquals(adHocRule.engineId(), "ballerina_external_analyzer");
+        Assert.assertEquals(adHocRule.ruleId(), "exampleOrg/example_module_static_code_analyzer:1");
+        List<ExternalIssue> externalIssues = context.allExternalIssues().stream().toList();
+        Assert.assertEquals(externalIssues.size(), 1);
+        ExternalIssue externalIssue = externalIssues.get(0);
+        Assert.assertEquals(externalIssue.severity(), Severity.MAJOR);
+        Assert.assertEquals(externalIssue.type(), RuleType.CODE_SMELL);
+        Assert.assertEquals(externalIssue.engineId(), "ballerina_external_analyzer");
+        Assert.assertEquals(externalIssue.ruleId(), "exampleOrg/example_module_static_code_analyzer:1");
+        IssueLocation issueLocation = externalIssue.primaryLocation();
+        Assert.assertEquals(issueLocation.message(), "rule 1");
+        TextRange textRange = issueLocation.textRange();
+        Assert.assertNotNull(textRange);
+        Assert.assertEquals(textRange.start().line(), 17);
+        Assert.assertEquals(textRange.start().lineOffset(), 0);
+        Assert.assertEquals(textRange.end().line(), 22);
+        Assert.assertEquals(textRange.end().lineOffset(), 1);
+    }
+
+    @Test(description = "Test the BallerinaSensor with the scan command")
+    void test_ballerina_sensor_with_scan_command() {
+        // Add mock input files
+        InputFile ballerinaFile = createInputFileFromPath("main.bal");
+        context.fileSystem().add(ballerinaFile);
+
+        // Trigger analysis
+        BallerinaSensor sensor = sensor();
+        String userDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", projectDir.toString());
+        sensor.execute(context);
+        System.setProperty("user.dir", userDir);
         List<Issue> issues = context.allIssues().stream().toList();
         Assert.assertEquals(issues.size(), 3);
         assertIssue(issues.get(0), "ballerina:Ballerina1", "Avoid checkpanic",
@@ -111,8 +161,6 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         Assertions.assertThat(textRange.end().line()).isEqualTo(endLine);
         Assertions.assertThat(textRange.end().lineOffset()).isEqualTo(endLineOffset);
     }
-
-    // TODO: Add tests for triggering an analysis from the sonar-platform plugin once scan tool is published.
 
     private BallerinaSensor sensor() {
         return new BallerinaSensor(language());

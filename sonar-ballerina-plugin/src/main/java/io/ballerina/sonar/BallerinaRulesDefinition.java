@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static io.ballerina.sonar.Constants.JSON_PROFILE_PATH;
+import static io.ballerina.sonar.Constants.JSON_RULE_KEYS_PATH;
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
 import static io.ballerina.sonar.Constants.RULE_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
@@ -63,7 +64,7 @@ public class BallerinaRulesDefinition implements RulesDefinition {
     }
 
     private List<String> loadRuleKeys() {
-        InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream("/ruleKeys.json");
+        InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream(JSON_RULE_KEYS_PATH);
         String content;
         if (inputStream != null) {
             try (
