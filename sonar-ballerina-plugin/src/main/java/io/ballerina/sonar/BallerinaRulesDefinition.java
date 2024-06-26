@@ -30,6 +30,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static io.ballerina.sonar.Constants.JSON_PROFILE_PATH;
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
@@ -63,23 +64,21 @@ public class BallerinaRulesDefinition implements RulesDefinition {
 
     private List<String> loadRuleKeys() {
         InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream("/ruleKeys.json");
-        StringBuilder builder = new StringBuilder();
+        String content;
         if (inputStream != null) {
             try (
                     InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
                     BufferedReader br = new BufferedReader(inputStreamReader)
             ) {
-                String content = br.readLine();
-                builder.append(content);
-                while ((content = br.readLine()) != null) {
-                    builder.append(System.lineSeparator()).append(content);
-                }
+                content = br.lines().collect(Collectors.joining(System.lineSeparator()));
             } catch (IOException ex) {
                 throw new IllegalStateException(ex);
             }
+        } else {
+            content = "";
         }
-        JsonArray rules = gson.fromJson(builder.toString(), JsonArray.class);
-        List<String> ruleKeys = new ArrayList<>();
+        JsonArray rules = gson.fromJson(content, JsonArray.class);
+        List<String> ruleKeys = new ArrayList<>(rules.size());
         rules.forEach(rule -> ruleKeys.add(rule.getAsJsonObject().get(RULE_KEY).getAsString()));
         return ruleKeys;
     }

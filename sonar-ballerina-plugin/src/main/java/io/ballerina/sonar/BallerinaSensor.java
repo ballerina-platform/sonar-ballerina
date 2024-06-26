@@ -22,6 +22,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.lang3.SystemUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
@@ -31,8 +33,6 @@ import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.batch.sensor.SensorDescriptor;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.RuleType;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -42,8 +42,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static io.ballerina.sonar.Constants.ANALYSIS_RESULTS_FILE_PATH;
 import static io.ballerina.sonar.Constants.BUG;
@@ -69,9 +72,9 @@ import static io.ballerina.sonar.Constants.VULNERABILITY;
  * @since 0.1.0
  */
 class BallerinaSensor implements Sensor {
-    private final Logger logger = Loggers.get(BallerinaSensor.class);
+    private final Logger logger = LoggerFactory.getLogger(BallerinaSensor.class);
     private final BallerinaLanguage language;
-    private final ArrayList<String> externalRules = new ArrayList<>();
+    private final Set<String> externalRules = new HashSet<>();
 
     public BallerinaSensor(BallerinaLanguage language) {
         this.language = language;
@@ -92,13 +95,10 @@ class BallerinaSensor implements Sensor {
         fileSystem.inputFiles(mainFilePredicate).forEach(inputFile -> {
             pathAndInputFiles.put(Path.of(inputFile.uri()).toString(), inputFile);
         });
-
-        String analyzedResultsPath = sensorContext.config().get(ANALYSIS_RESULTS_FILE_PATH).orElse(null);
-        if (analyzedResultsPath != null) {
-            processAnalyzedResultsReport(sensorContext, pathAndInputFiles, analyzedResultsPath);
-        } else {
-            performLibraryCall(sensorContext, pathAndInputFiles);
-        }
+        sensorContext.config().get(ANALYSIS_RESULTS_FILE_PATH).ifPresentOrElse((analyzedResultsPath) ->
+                        processAnalyzedResultsReport(sensorContext, pathAndInputFiles, analyzedResultsPath),
+                () -> performLibraryCall(sensorContext, pathAndInputFiles)
+        );
     }
 
     public void processAnalyzedResultsReport(SensorContext context,
@@ -148,12 +148,7 @@ class BallerinaSensor implements Sensor {
                 FileReader fileReader = new FileReader(analyzedResultsFilePath, StandardCharsets.UTF_8);
                 BufferedReader bufferedReader = new BufferedReader(fileReader)
         ) {
-            StringBuilder stringBuilder = new StringBuilder();
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                stringBuilder.append(line);
-            }
-            fileContent = stringBuilder.toString();
+            fileContent = bufferedReader.lines().collect(Collectors.joining());
         } catch (IOException ex) {
             logger.info("Unable to retrieve analysis results!");
         }
@@ -223,12 +218,11 @@ class BallerinaSensor implements Sensor {
         }
 
         String ruleKind = balScanOutput.get(ISSUE_RULE_KIND).getAsString();
-        RuleType ruleType;
-        switch (ruleKind) {
-            case BUG -> ruleType = RuleType.BUG;
-            case VULNERABILITY -> ruleType = RuleType.VULNERABILITY;
-            default -> ruleType = RuleType.CODE_SMELL;
-        }
+        RuleType ruleType = switch (ruleKind) {
+            case BUG -> RuleType.BUG;
+            case VULNERABILITY -> RuleType.VULNERABILITY;
+            default -> RuleType.CODE_SMELL;
+        };
         if (!externalRules.contains(ruleID)) {
             context.newAdHocRule()
                     .engineId("ballerina_external_analyzer")

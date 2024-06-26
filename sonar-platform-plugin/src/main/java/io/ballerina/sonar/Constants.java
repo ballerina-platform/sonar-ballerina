@@ -25,13 +25,13 @@ package io.ballerina.sonar;
  *
  * @since 0.1.0
  */
-public class Constants {
+public final class Constants {
     private Constants() {
     }
 
     static final String PLATFORM_NAME = "sonarqube";
     static final String ISSUE_FILE_PATH = "ballerina-analysis-results.json";
-    static final String RULE_PREFIX = "B";
+    static final String RULE_PREFIX = "Ballerina";
     static final String FORWARD_SLASH = "/";
     static final String START_LINE = "startLine";
     static final String START_LINE_OFFSET = "startLineOffset";

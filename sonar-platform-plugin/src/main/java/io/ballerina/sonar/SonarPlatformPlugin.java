@@ -105,8 +105,7 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
         }
 
         processBuilderArguments.add("-DanalyzedResultsPath=" + Path.of(ISSUE_FILE_PATH).toAbsolutePath());
-        String sonarProjectPropertiesPath = platformPluginContext.platformArgs()
-                .getOrDefault("sonarProjectPropertiesPath", null);
+        String sonarProjectPropertiesPath = platformPluginContext.platformArgs().get("sonarProjectPropertiesPath");
         if (sonarProjectPropertiesPath != null) {
             processBuilderArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
         }

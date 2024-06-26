@@ -67,7 +67,7 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         sensor.execute(context);
         List<Issue> issues = context.allIssues().stream().toList();
         Assert.assertEquals(issues.size(), 3);
-        assertIssue(issues.get(0), "ballerina:B1", "Avoid checkpanic",
+        assertIssue(issues.get(0), "ballerina:Ballerina1", "Avoid checkpanic",
                 21, 17, 21, 39);
         assertIssue(issues.get(1), "ballerina:ballerina/example_module_static_code_analyzer:1", "rule 1",
                 17, 0, 22, 1);
