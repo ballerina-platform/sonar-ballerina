@@ -21,6 +21,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,12 +90,10 @@ class BallerinaSensor implements Sensor {
     public void execute(SensorContext sensorContext) {
         FileSystem fileSystem = sensorContext.fileSystem();
         FilePredicate mainFilePredicate = sensorContext.fileSystem().predicates()
-                .and(fileSystem.predicates().hasLanguage(language.getKey()),
-                        fileSystem.predicates().hasType(InputFile.Type.MAIN));
+                .and(fileSystem.predicates().hasLanguage(language.getKey()));
         Map<String, InputFile> pathAndInputFiles = new HashMap<>();
-        fileSystem.inputFiles(mainFilePredicate).forEach(inputFile -> {
-            pathAndInputFiles.put(Path.of(inputFile.uri()).toString(), inputFile);
-        });
+        fileSystem.inputFiles(mainFilePredicate).forEach(inputFile ->
+                pathAndInputFiles.put(Path.of(inputFile.uri()).toString(), inputFile));
         sensorContext.config().get(ANALYSIS_RESULTS_FILE_PATH).ifPresentOrElse((analyzedResultsPath) ->
                         processAnalyzedResultsReport(sensorContext, pathAndInputFiles, analyzedResultsPath),
                 () -> performLibraryCall(sensorContext, pathAndInputFiles)
@@ -104,7 +103,7 @@ class BallerinaSensor implements Sensor {
     public void processAnalyzedResultsReport(SensorContext context,
                                              Map<String, InputFile> pathAndInputFiles,
                                              String analyzedResultsFilePath) {
-        logger.info("Analyzing batch report: ", analyzedResultsFilePath);
+        logger.info("Analyzing batch report: {}", analyzedResultsFilePath);
         String fileContent = getFileContent(analyzedResultsFilePath);
         reportFileContent(context, pathAndInputFiles, fileContent);
     }
@@ -135,41 +134,35 @@ class BallerinaSensor implements Sensor {
                 String fileContent = getFileContent(analyzedResultsFilePath);
                 reportFileContent(context, pathAndInputFiles, fileContent);
             } else {
-                logger.info("Unable to analyze ballerina file batch!");
+                logger.error("Failed to analyze Ballerina file batch with exit code: {}", exitCode);
             }
-        } catch (IOException | InterruptedException ex) {
-            throw new RuntimeException(ex);
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Failed to analyze Ballerina file batch: ", e);
         }
     }
 
     private String getFileContent(String analyzedResultsFilePath) {
-        String fileContent = "";
-        try (
-                FileReader fileReader = new FileReader(analyzedResultsFilePath, StandardCharsets.UTF_8);
-                BufferedReader bufferedReader = new BufferedReader(fileReader)
-        ) {
-            fileContent = bufferedReader.lines().collect(Collectors.joining());
-        } catch (IOException ex) {
-            logger.info("Unable to retrieve analysis results!");
+        try (FileReader fileReader = new FileReader(analyzedResultsFilePath, StandardCharsets.UTF_8);
+                BufferedReader bufferedReader = new BufferedReader(fileReader)) {
+            return bufferedReader.lines().collect(Collectors.joining());
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to retrieve analysis results: " + e.getMessage(), e);
         }
-        return fileContent;
     }
 
     private void reportFileContent(SensorContext context,
                                    Map<String, InputFile> pathAndInputFiles,
                                    String fileContent) {
-        JsonArray balScanOutput = null;
         try {
-            balScanOutput = JsonParser.parseString(fileContent).getAsJsonArray();
-        } catch (Exception ignored) {
-            logger.info("Unable to report analysis results!");
-        }
-
-        boolean reportingSuccessful = reportAnalysisIssues(context, balScanOutput, pathAndInputFiles);
-        if (reportingSuccessful) {
-            logger.info("Ballerina analysis successful!");
-        } else {
-            logger.info("Unable to analyze ballerina file batch!");
+            JsonArray balScanOutput = JsonParser.parseString(fileContent).getAsJsonArray();
+            boolean reportingSuccessful = reportAnalysisIssues(context, balScanOutput, pathAndInputFiles);
+            if (reportingSuccessful) {
+                logger.info("Ballerina analysis successful!");
+                return;
+            }
+            logger.error("Unable to analyze Ballerina file batch!");
+        } catch (JsonSyntaxException e) {
+            throw new RuntimeException("Unable to report analysis results: " + e.getMessage(), e);
         }
     }
 
@@ -186,7 +179,7 @@ class BallerinaSensor implements Sensor {
             switch (issueType) {
                 case BUILT_IN -> reportIssue(inputFile, context, issue, true);
                 case EXTERNAL -> reportIssue(inputFile, context, issue, false);
-                default -> logger.info("Invalid Issue Format!");
+                default -> logger.error("Invalid Issue Format!");
             }
         }
         return true;

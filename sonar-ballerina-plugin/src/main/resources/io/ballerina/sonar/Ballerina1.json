@@ -1,10 +1,10 @@
 {
-  "title": "Avoid checkpanic, prefer explicit error handling using check keyword instead!",
+  "title": "Avoid checkpanic, prefer explicit error handling using the check keyword instead",
   "type": "CODE_SMELL",
   "status": "ready",
   "remediation": {
     "func": "Constant\/Issue",
-    "constantCost": "2min"
+    "constantCost": "5min"
   },
   "tags": [
     "error-handling"

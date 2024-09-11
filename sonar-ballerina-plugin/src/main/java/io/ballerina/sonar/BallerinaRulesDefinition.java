@@ -66,17 +66,14 @@ public class BallerinaRulesDefinition implements RulesDefinition {
     private List<String> loadRuleKeys() {
         InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream(JSON_RULE_KEYS_PATH);
         String content;
-        if (inputStream != null) {
-            try (
-                    InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
-                    BufferedReader br = new BufferedReader(inputStreamReader)
-            ) {
-                content = br.lines().collect(Collectors.joining(System.lineSeparator()));
-            } catch (IOException ex) {
-                throw new IllegalStateException(ex);
-            }
-        } else {
-            content = "";
+        if (inputStream == null) {
+            throw new RuntimeException("Resource not found: " + JSON_RULE_KEYS_PATH);
+        }
+        try (InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+             BufferedReader br = new BufferedReader(inputStreamReader)) {
+            content = br.lines().collect(Collectors.joining(System.lineSeparator()));
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
         }
         JsonArray rules = gson.fromJson(content, JsonArray.class);
         List<String> ruleKeys = new ArrayList<>(rules.size());
