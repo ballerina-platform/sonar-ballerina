@@ -144,7 +144,7 @@ tasks.test {
     dependsOn ':sonar-platform-plugin:build'
 
     doFirst {
-        def targetJarDir = Paths.get("src", "test", "resources", "test-resources", "ballerina-project").toFile()
+        def targetJarDir = Paths.get("src", "test", "resources", "test-resources").toFile()
         def targetJar = new File(targetJarDir, "sonar-platform-plugin-${version}.jar")
         if (targetJar.exists()) {
             delete targetJar

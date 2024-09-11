@@ -21,6 +21,7 @@ import org.assertj.core.api.Assertions;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.TextRange;
 import org.sonar.api.batch.rule.Severity;
+import org.sonar.api.batch.sensor.internal.SensorContextTester;
 import org.sonar.api.batch.sensor.issue.ExternalIssue;
 import org.sonar.api.batch.sensor.issue.Issue;
 import org.sonar.api.batch.sensor.issue.IssueLocation;
@@ -49,11 +50,13 @@ import static io.ballerina.sonar.Constants.ISSUES_FILE_PATH;
 public class BallerinaSensorTest extends AbstractSensorTest {
     @Test(description = "Test the BallerinaSensor")
     void testBallerinaSensor() throws IOException {
+        Path projectDir = testResources.resolve("ballerina-project-with-report");
+        SensorContextTester context = SensorContextTester.create(projectDir);
+        cleanUp(projectDir);
+
         // Create mock issues file
-        String resourceFileContent = Files.readString(testReources.resolve("test-resources")
-                .resolve("ballerina-analysis-results.txt"));
-        String projectAbsolutePath = projectDir.resolve("main.bal").toAbsolutePath().toString()
-                .replace("\\", "\\\\");
+        String resourceFileContent = Files.readString(projectDir.resolve("ballerina-analysis-results.json.template"));
+        String projectAbsolutePath = projectDir.resolve("main.bal").toAbsolutePath().toString().replace("\\", "\\\\");
         resourceFileContent = resourceFileContent.replaceAll("__file_path__", Matcher
                 .quoteReplacement(projectAbsolutePath));
         Path filePath = Files.writeString(Paths.get(projectDir.toString(), ISSUES_FILE_PATH), resourceFileContent,
@@ -64,7 +67,7 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         context.setSettings((MapSettings) settings);
 
         // Add mock input files
-        InputFile ballerinaFile = createInputFileFromPath("main.bal");
+        InputFile ballerinaFile = createInputFileFromPath(projectDir, "main.bal");
         context.fileSystem().add(ballerinaFile);
 
         // Trigger analysis
@@ -108,9 +111,13 @@ public class BallerinaSensorTest extends AbstractSensorTest {
     }
 
     @Test(description = "Test the BallerinaSensor with the scan command")
-    void testBallerinaSensorWithScanCommand() {
+    void testBallerinaSensorWithScanCommand() throws IOException {
+        Path projectDir = testResources.resolve("ballerina-project-wo-report");
+        SensorContextTester context = SensorContextTester.create(projectDir);
+        cleanUp(projectDir);
+
         // Add mock input files
-        InputFile ballerinaFile = createInputFileFromPath("main.bal");
+        InputFile ballerinaFile = createInputFileFromPath(projectDir, "main.bal");
         context.fileSystem().add(ballerinaFile);
 
         // Trigger analysis

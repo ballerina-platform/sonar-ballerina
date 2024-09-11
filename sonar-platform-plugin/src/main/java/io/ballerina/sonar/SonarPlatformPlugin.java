@@ -41,7 +41,7 @@ import static io.ballerina.sonar.Constants.END_LINE_OFFSET;
 import static io.ballerina.sonar.Constants.FILE_NAME;
 import static io.ballerina.sonar.Constants.FILE_PATH;
 import static io.ballerina.sonar.Constants.FORWARD_SLASH;
-import static io.ballerina.sonar.Constants.ISSUE_FILE_PATH;
+import static io.ballerina.sonar.Constants.ISSUES_FILE_PATH;
 import static io.ballerina.sonar.Constants.MESSAGE;
 import static io.ballerina.sonar.Constants.RULE_ID;
 import static io.ballerina.sonar.Constants.RULE_KIND;
@@ -101,7 +101,7 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
             return;
         }
 
-        processBuilderArguments.add("-DanalyzedResultsPath=" + Path.of(ISSUE_FILE_PATH).toAbsolutePath());
+        processBuilderArguments.add("-DanalyzedResultsPath=" + Path.of(ISSUES_FILE_PATH).toAbsolutePath());
         String sonarProjectPropertiesPath = platformPluginContext.platformArgs().get("sonarProjectPropertiesPath");
         if (sonarProjectPropertiesPath != null) {
             processBuilderArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
@@ -151,7 +151,7 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String jsonOutput = gson.toJson(issuesAsJson);
-        File destination = Path.of(System.getProperty("user.dir")).resolve(Constants.ISSUE_FILE_PATH).toFile();
+        File destination = Path.of(System.getProperty("user.dir")).resolve(ISSUES_FILE_PATH).toFile();
         try (FileWriter writer = new FileWriter(destination, StandardCharsets.UTF_8)) {
             writer.write(jsonOutput);
         } catch (IOException ex) {
