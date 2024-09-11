@@ -1,20 +1,17 @@
 /*
+ * Copyright (c) 2024, WSO2 LLC. (http://www.wso2.org) All Rights Reserved.
  *
- *  * Copyright (c) 2024, WSO2 LLC. (https://www.wso2.com).
- *  *
- *  * WSO2 LLC. licenses this file to you under the Apache License,
- *  * Version 2.0 (the "License"); you may not use this file except
- *  * in compliance with the License.
- *  * You may obtain a copy of the License at
- *  *
- *  *   http://www.apache.org/licenses/LICENSE-2.0
- *  *
- *  * Unless required by applicable law or agreed to in writing,
- *  * software distributed under the License is distributed on an
- *  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  * KIND, either express or implied. See the License for the
- *  * specific language governing permissions and limitations
- *  * under the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  */
 
@@ -99,7 +96,7 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
 
     @Override
     public void onScan(List<Issue> issues) {
-        saveIssues(ISSUE_FILE_PATH, issues);
+        saveIssues(issues);
         if (platformPluginContext.initiatedByPlatform()) {
             return;
         }
@@ -125,7 +122,7 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
         }
     }
 
-    private void saveIssues(String fileName, List<Issue> issues) {
+    private void saveIssues(List<Issue> issues) {
         JsonArray issuesAsJson = new JsonArray();
         issues.forEach(issue -> {
             IssueImpl reportedIssue = (IssueImpl) issue;
@@ -154,7 +151,7 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String jsonOutput = gson.toJson(issuesAsJson);
-        File destination = new File(Path.of(System.getProperty("user.dir")).resolve(fileName).toString());
+        File destination = Path.of(System.getProperty("user.dir")).resolve(Constants.ISSUE_FILE_PATH).toFile();
         try (FileWriter writer = new FileWriter(destination, StandardCharsets.UTF_8)) {
             writer.write(jsonOutput);
         } catch (IOException ex) {
