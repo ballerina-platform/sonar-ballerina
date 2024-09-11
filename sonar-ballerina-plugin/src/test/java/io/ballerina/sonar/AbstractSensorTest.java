@@ -28,6 +28,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+/**
+ * {@code AbstractSensorTest} is the abstract class for sensor tests.
+ *
+ * @since 0.1.0
+ */
 public abstract class AbstractSensorTest {
     protected final Path testReources = Paths.get("src", "test", "resources");
     protected final Path projectDir = testReources.resolve("test-resources").resolve("ballerina-project");

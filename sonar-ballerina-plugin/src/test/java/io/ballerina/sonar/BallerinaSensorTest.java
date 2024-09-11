@@ -41,9 +41,14 @@ import java.util.regex.Matcher;
 
 import static io.ballerina.sonar.Constants.ISSUES_FILE_PATH;
 
+/**
+ * {@code BallerinaSensorTest} is the test class for the {@link BallerinaSensor}.
+ *
+ * @since 0.1.0
+ */
 public class BallerinaSensorTest extends AbstractSensorTest {
     @Test(description = "Test the BallerinaSensor")
-    void test_ballerina_sensor() throws IOException {
+    void testBallerinaSensor() throws IOException {
         // Create mock issues file
         String resourceFileContent = Files.readString(testReources.resolve("test-resources")
                 .resolve("ballerina-analysis-results.txt"));
@@ -57,7 +62,6 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         // Append mock settings file
         Settings settings = context.settings().appendProperty("analyzedResultsPath", filePath.toString());
         context.setSettings((MapSettings) settings);
-
 
         // Add mock input files
         InputFile ballerinaFile = createInputFileFromPath("main.bal");
@@ -104,7 +108,7 @@ public class BallerinaSensorTest extends AbstractSensorTest {
     }
 
     @Test(description = "Test the BallerinaSensor with the scan command")
-    void test_ballerina_sensor_with_scan_command() {
+    void testBallerinaSensorWithScanCommand() {
         // Add mock input files
         InputFile ballerinaFile = createInputFileFromPath("main.bal");
         context.fileSystem().add(ballerinaFile);
