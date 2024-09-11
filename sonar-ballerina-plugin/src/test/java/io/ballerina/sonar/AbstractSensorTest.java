@@ -19,7 +19,6 @@ package io.ballerina.sonar;
 
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
-import org.sonar.api.batch.sensor.internal.SensorContextTester;
 import org.sonar.api.config.internal.MapSettings;
 
 import java.io.IOException;
@@ -34,11 +33,9 @@ import java.nio.file.Paths;
  * @since 0.1.0
  */
 public abstract class AbstractSensorTest {
-    protected final Path testReources = Paths.get("src", "test", "resources");
-    protected final Path projectDir = testReources.resolve("test-resources").resolve("ballerina-project");
-    protected final SensorContextTester context = SensorContextTester.create(projectDir);
+    protected final Path testResources = Paths.get("src", "test", "resources", "test-resources");
 
-    protected InputFile createInputFileFromPath(String relativePath) {
+    protected InputFile createInputFileFromPath(Path projectDir, String relativePath) {
         Path balFilePath = projectDir.resolve(relativePath);
 
         String fileContent;
@@ -60,5 +57,12 @@ public abstract class AbstractSensorTest {
 
     protected BallerinaLanguage language() {
         return new BallerinaLanguage(new MapSettings().asConfig());
+    }
+
+    protected void cleanUp(Path projectDir) throws IOException {
+        Path resultsReport = projectDir.resolve("ballerina-analysis-results.json");
+        if (Files.exists(resultsReport)) {
+            Files.delete(resultsReport);
+        }
     }
 }
