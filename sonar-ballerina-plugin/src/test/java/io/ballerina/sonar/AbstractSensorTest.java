@@ -60,7 +60,7 @@ public abstract class AbstractSensorTest {
     }
 
     protected void cleanUp(Path projectDir) throws IOException {
-        Path resultsReport = projectDir.resolve("ballerina-analysis-results.json");
+        Path resultsReport = projectDir.resolve("ballerina-static-code-analysis-results.json");
         if (Files.exists(resultsReport)) {
             Files.delete(resultsReport);
         }

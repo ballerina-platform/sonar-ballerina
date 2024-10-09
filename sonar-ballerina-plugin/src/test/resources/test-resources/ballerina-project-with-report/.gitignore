@@ -2,5 +2,5 @@
 target
 generated
 Config.toml
-ballerina-analysis-results.json
+ballerina-static-code-analysis-results.json
 sonar-platform-plugin-1.0.jar

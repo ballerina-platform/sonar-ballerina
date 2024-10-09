@@ -55,7 +55,8 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         cleanUp(projectDir);
 
         // Create mock issues file
-        String resourceFileContent = Files.readString(projectDir.resolve("ballerina-analysis-results.json.template"));
+        String resourceFileContent = Files.readString(
+                projectDir.resolve("ballerina-static-code-analysis-results.json.template"));
         String projectAbsolutePath = projectDir.resolve("main.bal").toAbsolutePath().toString().replace("\\", "\\\\");
         resourceFileContent = resourceFileContent.replaceAll("__file_path__", Matcher
                 .quoteReplacement(projectAbsolutePath));

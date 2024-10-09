@@ -48,7 +48,7 @@ public final class Constants {
 
     // Sensor
     static final String ANALYSIS_RESULTS_FILE_PATH = "analyzedResultsPath";
-    static final String ISSUES_FILE_PATH = "ballerina-analysis-results.json";
+    static final String ISSUES_FILE_PATH = "ballerina-static-code-analysis-results.json";
     static final String ISSUE_FILE_PATH = "filePath";
     static final String ISSUE_SOURCE = "source";
     static final String ISSUE_RULE_ID = "ruleID";
