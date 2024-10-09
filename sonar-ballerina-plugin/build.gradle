@@ -16,6 +16,8 @@
  * under the License.
  */
 
+
+import java.nio.file.Paths
 import java.util.jar.JarInputStream
 
 plugins {
@@ -27,7 +29,7 @@ plugins {
 }
 
 group = "${group}"
-version = "${sonarPluginVersion}"
+version = "${version}"
 
 repositories {
     mavenLocal()
@@ -139,6 +141,23 @@ spotbugsTest {
 
 // Configurations for testing
 tasks.test {
+    dependsOn ':sonar-platform-plugin:build'
+
+    doFirst {
+        def targetJarDir = Paths.get("src", "test", "resources", "test-resources").toFile()
+        def targetJar = new File(targetJarDir, "sonar-platform-plugin-${version}.jar")
+        if (targetJar.exists()) {
+            delete targetJar
+        }
+
+        def platformPluginJar = project(":sonar-platform-plugin").buildDir.toPath()
+                .resolve("libs/sonar-platform-plugin-${version}.jar").toFile()
+        copy {
+            from platformPluginJar
+            into targetJarDir
+        }
+    }
+
     useTestNG() {
         suites 'src/test/resources/testng.xml'
     }

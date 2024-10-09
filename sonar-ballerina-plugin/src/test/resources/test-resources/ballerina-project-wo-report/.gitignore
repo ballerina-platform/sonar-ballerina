@@ -1,0 +1,6 @@
+.sonar
+target
+generated
+Config.toml
+ballerina-static-code-analysis-results.json
+sonar-platform-plugin-1.0.jar
