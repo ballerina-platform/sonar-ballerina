@@ -179,7 +179,7 @@ class BallerinaSensor implements Sensor {
             switch (issueType) {
                 case BUILT_IN -> reportIssue(inputFile, context, issue, true);
                 case EXTERNAL -> reportIssue(inputFile, context, issue, false);
-                default -> logger.error("Invalid Issue Format!");
+                default -> logger.error("Invalid issue format!");
             }
         }
         return true;

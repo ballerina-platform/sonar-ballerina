@@ -1,7 +1,7 @@
 <p><b>Why is this an issue?</b></p>
 
 <p>
-    When “checkpanic” is used, the program terminates abruptly with a panic unless
+    When 'checkpanic' is used, the program terminates abruptly with a panic unless
     it’s handled explicitly along the call stack.
 </p>
 
@@ -34,8 +34,8 @@
     }
     </pre></br>
     <li>
-        Make use of check keyword, which returns errors directly in contrast to
-        checkpanic and panicking if an expression or action evaluates to an error.
+        Make use of the 'check' keyword to handle the error either by returning the error
+        or transferring control to an 'on fail' block.
     </li></br>
     <pre>
     // Compliant
@@ -49,4 +49,4 @@
     </pre>
 </ul>
 
-<p>This rule raises an issue when a function has checkpanic keyword usage</p>
+<p>This rule raises an issue when 'checkpanic' is used</p>
