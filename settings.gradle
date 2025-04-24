@@ -29,3 +29,12 @@ pluginManagement {
 rootProject.name = 'sonar-ballerina'
 include 'sonar-ballerina-plugin'
 include 'sonar-platform-plugin'
+
+if (gradle.startParameter.buildScan) {
+    gradleEnterprise {
+        buildScan {
+            termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+            termsOfServiceAgree = 'yes'
+        }
+    }
+}

@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '17.0.7'
+          java-version: '21.0.6'
 
       - name: Set Up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.0
