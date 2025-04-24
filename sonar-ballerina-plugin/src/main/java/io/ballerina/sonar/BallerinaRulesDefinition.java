@@ -18,24 +18,17 @@
 package io.ballerina.sonar;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import org.sonar.api.SonarRuntime;
 import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.analyzer.commons.RuleMetadataLoader;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.ballerina.sonar.Constants.JSON_PROFILE_PATH;
-import static io.ballerina.sonar.Constants.JSON_RULE_KEYS_PATH;
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
-import static io.ballerina.sonar.Constants.RULE_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_NAME;
 import static io.ballerina.sonar.Constants.RULE_RESOURCE_FOLDER;
@@ -64,20 +57,16 @@ public class BallerinaRulesDefinition implements RulesDefinition {
     }
 
     private List<String> loadRuleKeys() {
-        InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream(JSON_RULE_KEYS_PATH);
-        String content;
+        InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream(JSON_PROFILE_PATH);
         if (inputStream == null) {
-            throw new RuntimeException("Resource not found: " + JSON_RULE_KEYS_PATH);
+            throw new RuntimeException("Resource not found: " + JSON_PROFILE_PATH);
         }
-        try (InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
-             BufferedReader br = new BufferedReader(inputStreamReader)) {
-            content = br.lines().collect(Collectors.joining(System.lineSeparator()));
-        } catch (IOException ex) {
-            throw new IllegalStateException(ex);
-        }
-        JsonArray rules = gson.fromJson(content, JsonArray.class);
-        List<String> ruleKeys = new ArrayList<>(rules.size());
-        rules.forEach(rule -> ruleKeys.add(rule.getAsJsonObject().get(RULE_KEY).getAsString()));
-        return ruleKeys;
+        InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+        Gson gson = new Gson();
+        Profile profile = gson.fromJson(reader, Profile.class);
+        return profile.ruleKeys();
+    }
+
+    record Profile(String name, List<String> ruleKeys) {
     }
 }
