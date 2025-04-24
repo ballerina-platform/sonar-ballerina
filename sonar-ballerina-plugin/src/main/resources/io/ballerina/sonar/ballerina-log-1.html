@@ -1,0 +1,40 @@
+<p>
+    In Ballerina, configurable variables typically contain sensitive data that should not be exposed externally and are usually kept secret.
+    This includes credentials to access external systems, such as databases.
+    To protect users' privacy, information is forbidden or strongly discouraged from being logged,
+    such as user passwords or credit card numbers, which should obviously not be stored or at least not in clear text.
+</p>
+
+<h2>Noncompliant Code Example</h2>
+
+<pre>
+import ballerina/log;
+
+configurable string password = ?;
+configurable string user = ?;
+
+public function main() {
+   log:printInfo(password);
+   log:printError(string `Error: ${password}`);
+   log:printWarn(`Error: ${password}`);
+   log:printError("Error " + password);
+   log:printWarn("Warning", password = password);
+   log:printError("Error", password = password, user = user);
+}
+</pre>
+
+<h2>Compliant Solution</h2>
+
+<p>
+    Avoid using configurable variables inside the logging statement.
+</p>
+
+<pre>
+import ballerina/log;
+
+int id = 12345;
+
+public function main() {
+   log:printInfo(“task executed successfully.”, id = id);
+}
+</pre>

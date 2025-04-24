@@ -1,0 +1,17 @@
+{
+  "title": "This operation always evaluates to true",
+  "type": "CODE_SMELL",
+  "status": "ready",
+  "remediation": {
+    "func": "Constant\/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "trivial"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "N/A",
+  "sqKey": "ballerina:7",
+  "scope": "All",
+  "quickfix": "unknown"
+}

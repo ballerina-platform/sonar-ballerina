@@ -1,0 +1,17 @@
+{
+  "title": "Non isolated public object",
+  "type": "CODE_SMELL",
+  "status": "ready",
+  "remediation": {
+    "func": "Constant\/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "concurrency"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "N/A",
+  "sqKey": "ballerina:6",
+  "scope": "All",
+  "quickfix": "unknown"
+}

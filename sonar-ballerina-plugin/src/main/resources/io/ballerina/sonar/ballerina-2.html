@@ -1,0 +1,37 @@
+<p>
+    Unused function parameters cause unnecessary code complexity and can lead to confusion for developers
+    maintaining the code. They may also indicate potential errors in function design or changes in requirements
+    that were not properly implemented.
+</p>
+
+<h2>Noncompliant Code Example</h2>
+
+<pre>
+import ballerina/io;
+
+function name(int a, int b) {
+   io:println(a);
+}
+
+public function main() {
+   name(1, 2);
+}
+</pre>
+
+<h2>Compliant Solution</h2>
+
+<p>
+    Remove unused function parameters to improve code clarity and maintainability.
+    If the parameter is intended for future use or completeness, consider documenting it or refactoring the function to use it.
+</p>
+<pre>
+import ballerina/io;
+
+function name(int a) {
+   io:println(a);
+}
+
+public function main() {
+   name(1);
+}
+</pre>

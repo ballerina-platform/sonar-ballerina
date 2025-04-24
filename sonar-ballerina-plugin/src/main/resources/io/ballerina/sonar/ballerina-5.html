@@ -1,0 +1,36 @@
+<p>
+    A class defined as isolated is similar to a module with isolated module-level variables.
+    A non-isolated class will not be accessed concurrently. Only isolated classes are accessed concurrently.
+    To allow being accessed concurrently, a public class should be marked as isolated.
+</p>
+
+<h2>Noncompliant Code Example</h2>
+
+<pre>
+public class EvenNumber {
+    int i = 1;
+
+    public isolated function generate() returns int {
+        lock {
+            return self.i * 2;
+        }
+    }
+}
+</pre>
+
+<h2>Compliant Solution</h2>
+
+<p>
+    Mark public classes as isolated to ensure the class can be used in a concurrent environment.
+</p>
+<pre>
+public isolated class EvenNumber {
+    int i = 1;
+
+    public isolated function generate() returns int {
+        lock {
+            return self.i * 2;
+        }
+    }
+}
+</pre>

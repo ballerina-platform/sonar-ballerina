@@ -1,5 +1,5 @@
 {
-  "title": "Avoid checkpanic, prefer explicit error handling using the check keyword instead",
+  "title": "Non isolated public method",
   "type": "CODE_SMELL",
   "status": "ready",
   "remediation": {
@@ -7,11 +7,11 @@
     "constantCost": "5min"
   },
   "tags": [
-    "error-handling"
+    "concurrency"
   ],
   "defaultSeverity": "Major",
   "ruleSpecification": "N/A",
-  "sqKey": "Ballerina1",
+  "sqKey": "ballerina:4",
   "scope": "All",
   "quickfix": "unknown"
 }

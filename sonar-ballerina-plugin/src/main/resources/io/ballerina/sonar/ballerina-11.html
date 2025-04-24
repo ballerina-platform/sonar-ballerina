@@ -1,0 +1,41 @@
+<p>
+    Unused or unread private fields/methods in a class can indicate incomplete or erroneous logic, lead to unnecessary
+    memory usage, and make the code harder to maintain and understand.
+</p>
+
+<h2>Noncompliant Code Example</h2>
+
+<pre>
+class A {
+  private int[] a = [];
+  private int[] b = [];
+
+  function foo() {
+    self.a = [2];
+  }
+}
+
+public function main() {
+  A a = new A();
+}
+</pre>
+
+<h2>Compliant Solution</h2>
+
+<p>
+    Remove the unused private fields/methods. If the field/method is intended for future use or completeness,
+    consider documenting, refactoring the class to use it, or introducing it when ready to implement the rest.
+</p>
+<pre>
+class A {
+  private int[] a = [];
+
+  function foo() {
+      self.a = [2];
+  }
+}
+
+public function main() {
+  A a = new A();
+}
+</pre>

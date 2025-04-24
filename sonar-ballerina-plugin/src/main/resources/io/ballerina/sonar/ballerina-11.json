@@ -1,0 +1,17 @@
+{
+  "title": "Unused class private fields",
+  "type": "CODE_SMELL",
+  "status": "ready",
+  "remediation": {
+    "func": "Constant\/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "unused"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "N/A",
+  "sqKey": "ballerina:11",
+  "scope": "All",
+  "quickfix": "unknown"
+}

@@ -1,0 +1,18 @@
+{
+  "title": "Avoid allowing default resource accessor",
+  "type": "VULNERABILITY",
+  "status": "ready",
+  "remediation": {
+    "func": "Constant\/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "http",
+    "csrf"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "N/A",
+  "sqKey": "ballerina/http:1",
+  "scope": "All",
+  "quickfix": "unknown"
+}

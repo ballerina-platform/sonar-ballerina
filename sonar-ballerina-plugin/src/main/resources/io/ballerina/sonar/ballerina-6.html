@@ -1,0 +1,23 @@
+<p>
+    A non-isolated object will not be accessed concurrently. Only isolated object are accessed concurrently.
+    To allow being accessed concurrently, a public object should be marked as isolated.
+</p>
+
+<h2>Noncompliant Code Example</h2>
+
+<pre>
+public type Hashable object {
+    function hash() returns int;
+};
+</pre>
+
+<h2>Compliant Solution</h2>
+
+<p>
+    Mark public objects as isolated to ensure the object can be used in a concurrent environment.
+</p>
+<pre>
+public isolated type Hashable object {
+    function hash() returns int;
+};
+</pre>

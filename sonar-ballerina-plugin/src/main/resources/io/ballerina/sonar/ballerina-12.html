@@ -1,0 +1,32 @@
+<p>
+    The update clause of a range expression should ensure the counter moves in the correct direction.
+    Incorrect range expression directions can lead to unexpected behavior, making the code harder to understand and debug.
+</p>
+
+<h2>Noncompliant Code Example</h2>
+
+<pre>
+import ballerina/io;
+
+public function main() {
+   foreach int i in 9...0 {
+       io:println(i);
+   }
+}
+</pre>
+
+<h2>Compliant Solution</h2>
+
+<p>
+    Ensure the range expression counter moves in the correct direction according to the desired iteration.
+    Use the correct range or adjust the range expression logic to achieve the intended behavior.
+</p>
+<pre>
+import ballerina/io;
+
+public function main() {
+   foreach int i in 0...9 {
+       io:println(i);
+   }
+}
+</pre>

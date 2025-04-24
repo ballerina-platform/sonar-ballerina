@@ -1,0 +1,13 @@
+<p>
+    Conditions that are always false indicate unreachable code or logic that will never execute.
+    This can clutter the codebase, make it harder to understand, and potentially hide bugs or unintentional logic errors.
+</p>
+
+<h2>Noncompliant Code Example</h2>
+
+<pre>
+public function main() {
+   int a = 1
+   boolean b = a <= int:MIN_VALUE;
+}
+</pre>

@@ -1,0 +1,18 @@
+{
+  "title": "File function calls should not be vulnerable to path injection attacks",
+  "type": "VULNERABILITY",
+  "status": "ready",
+  "remediation": {
+    "func": "Constant\/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "file",
+    "injection"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "N/A",
+  "sqKey": "ballerina/file:2",
+  "scope": "All",
+  "quickfix": "unknown"
+}
