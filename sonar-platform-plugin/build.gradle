@@ -43,26 +43,15 @@ repositories {
             password System.getenv("packagePAT")
         }
     }
-    // TODO: Remove GitHub packages repository once scan tool package is published to central
-    maven {
-        url = 'https://maven.pkg.github.com/Xenowa/static-code-analysis-tool'
-        credentials {
-            username System.getenv("packageUser")
-            password System.getenv("packagePAT")
-        }
-    }
 }
 
 dependencies {
-    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.0'
-    checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.12.1'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
     implementation group :'com.google.code.gson', name: 'gson', version: "${gsonVersion}"
-
-    // Required Ballerina dependencies
     implementation group: 'org.ballerinalang', name: 'ballerina-tools-api', version: "${ballerinaLangVersion}"
-
-    // Scan Tool dependency
     implementation group: 'io.ballerina.scan', name: 'scan-command', version: "${scanToolVersion}"
+
+    checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.12.1'
 }
 
 java {

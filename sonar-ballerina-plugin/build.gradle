@@ -45,26 +45,13 @@ repositories {
 dependencies {
     compileOnly group: 'org.sonarsource.api.plugin', name: 'sonar-plugin-api', version: "${sonarPluginAPIVersion}"
 
-    implementation group:'javax.annotation', name:'javax.annotation-api', version: "${javaAnnotationAPIVersion}"
     implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-commons', version: "${sonarAnalyzerCommonsVersion}"
-    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-xml-parsing', version: "${sonarAnalyzerCommonsVersion}"
-    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-regex-parsing', version: "${sonarAnalyzerCommonsVersion}"
-    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-performance-measure', version: "${sonarAnalyzerCommonsVersion}"
-    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-recognizers', version: "${sonarAnalyzerCommonsVersion}"
     implementation "com.google.code.gson:gson:${gsonVersion}"
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
 
     checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: "${puppycrawlCheckstyleVersion}"
 
     testImplementation group: 'org.testng', name: 'testng', version: "${testngVersion}"
-    testImplementation group: 'org.assertj', name: 'assertj-core', version: "${assertJCoreVersion}"
-    testImplementation group: 'org.mockito', name: 'mockito-core', version: "${mockitoCoreVersion}"
-    testImplementation group: 'io.mockk', name: 'mockk', version: "${mockkVersion}"
-    testImplementation group: 'io.github.classgraph', name: 'classgraph', version: "${classGraphVersion}"
-    testImplementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-test-commons', version: "${sonarAnalyzerCommonsVersion}"
-    testImplementation group: 'org.sonarsource.orchestrator', name: 'sonar-orchestrator', version: "${sonarOrchestratorVersion}"
-    testImplementation group: 'org.sonarsource.sonarlint.core', name: 'sonarlint-core', version: "${sonarLintCoreVersion}"
-    testImplementation group: 'org.sonarsource.sonarqube', name: 'sonar-ws', version: "${sonarQubeVersion}"
     testImplementation group: 'org.sonarsource.sonarqube', name: 'sonar-plugin-api-impl', version: "${sonarQubeVersion}"
 }
 
