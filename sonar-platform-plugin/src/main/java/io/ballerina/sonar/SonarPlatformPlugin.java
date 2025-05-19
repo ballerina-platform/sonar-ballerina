@@ -36,13 +36,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.ballerina.sonar.Constants.COLON;
 import static io.ballerina.sonar.Constants.END_LINE;
 import static io.ballerina.sonar.Constants.END_LINE_OFFSET;
 import static io.ballerina.sonar.Constants.FILE_NAME;
 import static io.ballerina.sonar.Constants.FILE_PATH;
-import static io.ballerina.sonar.Constants.FORWARD_SLASH;
-import static io.ballerina.sonar.Constants.HYPHEN;
 import static io.ballerina.sonar.Constants.ISSUES_FILE_PATH;
 import static io.ballerina.sonar.Constants.MESSAGE;
 import static io.ballerina.sonar.Constants.RULE_ID;
@@ -129,13 +126,10 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
             IssueImpl reportedIssue = (IssueImpl) issue;
             JsonObject issueObject = new JsonObject();
             issueObject.addProperty(START_LINE, reportedIssue.location().lineRange().startLine().line());
-            issueObject.addProperty(START_LINE_OFFSET, reportedIssue.location().lineRange().startLine()
-                    .offset());
+            issueObject.addProperty(START_LINE_OFFSET, reportedIssue.location().lineRange().startLine().offset());
             issueObject.addProperty(END_LINE, reportedIssue.location().lineRange().endLine().line());
             issueObject.addProperty(END_LINE_OFFSET, reportedIssue.location().lineRange().endLine().offset());
-            String fullyQualifiedRuleId = reportedIssue.rule().id();
-            String ruleId = fullyQualifiedRuleId.replaceAll(FORWARD_SLASH, HYPHEN).replaceAll(COLON, HYPHEN);
-            issueObject.addProperty(RULE_ID, ruleId);
+            issueObject.addProperty(RULE_ID, reportedIssue.rule().id());
             issueObject.addProperty(MESSAGE, reportedIssue.rule().description());
             issueObject.addProperty(RULE_KIND, reportedIssue.rule().kind().toString());
             issueObject.addProperty(SOURCE, reportedIssue.source().toString());

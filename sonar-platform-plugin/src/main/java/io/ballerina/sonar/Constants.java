@@ -28,9 +28,6 @@ public final class Constants {
 
     static final String PLATFORM_NAME = "sonarqube";
     static final String ISSUES_FILE_PATH = "ballerina-static-code-analysis-results.json";
-    static final String FORWARD_SLASH = "/";
-    static final String HYPHEN = "-";
-    static final String COLON = ":";
     static final String START_LINE = "startLine";
     static final String START_LINE_OFFSET = "startLineOffset";
     static final String END_LINE = "endLine";

@@ -48,6 +48,7 @@ dependencies {
     implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-commons', version: "${sonarAnalyzerCommonsVersion}"
     implementation "com.google.code.gson:gson:${gsonVersion}"
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
+    implementation group: 'org.commonmark', name: 'commonmark', version: "${commonMarkVersion}"
 
     checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: "${puppycrawlCheckstyleVersion}"
 
