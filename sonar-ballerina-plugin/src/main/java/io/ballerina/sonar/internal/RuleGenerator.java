@@ -35,10 +35,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -49,7 +56,8 @@ import java.util.zip.ZipInputStream;
  */
 public class RuleGenerator {
     private final HttpClient httpClient = HttpClient.newHttpClient();
-    private final Map<String, RuleMetadata.Builder> rules = new HashMap<>();
+    private final List<RuleMetadata> rules = new ArrayList<>();
+    Logger logger = Logger.getLogger(RuleGenerator.class.getName());
 
     private static final RuleGenerator INSTANCE = new RuleGenerator();
 
@@ -61,6 +69,8 @@ public class RuleGenerator {
     private static final String ACCEPT_ENCODING_HEADER_NAME = "Accept-Encoding";
     private static final String ACCEPT_ENCODING_HEADER_VALUE = "identity";
     private static final String RULE_INFO_FILE_PATH = "resources/rule-info.json";
+    private static final Path RULE_CACHE_PATH = Paths.get(System.getProperty("user.home"), ".sonar-ballerina",
+            "rule-cache.json");
 
     private RuleGenerator() {
     }
@@ -75,19 +85,33 @@ public class RuleGenerator {
     }
 
     /**
-     * Generates the rules for the Sonar Ballerina plugin by fetching metadata from the scan tool.
+     * Loads the rules for the Sonar Ballerina plugin by fetching metadata from the scan tool in Ballerina Central.
+     * If the rules are already loaded, it returns the rules.
+     * If there is an error while fetching the rules from the scan tool, it attempts to load them from a cache file.
      *
      * @return List of RuleMetadata objects
      * @throws SonarBallerinaException if an error occurs while fetching or processing the rules
      */
-    public synchronized List<RuleMetadata> generateRules() throws SonarBallerinaException {
-        if (!rules.isEmpty()) {
-            return rules.values().stream().map(RuleMetadata.Builder::build).toList();
+    public synchronized List<RuleMetadata> loadRules() throws SonarBallerinaException {
+        if (rules.isEmpty()) {
+            try {
+                generateRules();
+                saveRulesIntoCache();
+            } catch (SonarBallerinaException e) {
+                boolean rulesLoadedFromCache = loadRulesFromCache();
+                if (!rulesLoadedFromCache) {
+                    throw e;
+                }
+            }
         }
+        return Collections.unmodifiableList(rules);
+    }
+
+    private void generateRules() throws SonarBallerinaException {
         ScanToolMetadata scanToolMetadata = getScanToolMetadata();
-        extractRuleInfo(scanToolMetadata.getBalaURL());
-        extractRuleDocs(scanToolMetadata.getReadme());
-        return rules.values().stream().map(RuleMetadata.Builder::build).toList();
+        Map<String, RuleMetadata.Builder> ruleBuilders = extractRuleInfo(scanToolMetadata.getBalaURL());
+        extractRuleDocs(ruleBuilders, scanToolMetadata.getReadme());
+        rules.addAll(ruleBuilders.values().stream().map(RuleMetadata.Builder::build).toList());
     }
 
     private ScanToolMetadata getScanToolMetadata() throws SonarBallerinaException {
@@ -110,7 +134,8 @@ public class RuleGenerator {
         }
     }
 
-    private void extractRuleInfo(String balaUrl) throws SonarBallerinaException {
+    private Map<String, RuleMetadata.Builder> extractRuleInfo(String balaUrl) throws SonarBallerinaException {
+        Map<String, RuleMetadata.Builder> ruleBuilders = new HashMap<>();
         HttpRequest pullBalaRequest = HttpRequest.newBuilder()
                 .GET()
                 .uri(URI.create(balaUrl))
@@ -149,10 +174,10 @@ public class RuleGenerator {
                                 .setType(rule.getType().toUpperCase(Locale.ROOT))
                                 .setSeverity(rule.getDefaultSeverity().toUpperCase(Locale.ROOT))
                                 .setTags(rule.getTags());
-                        rules.put(ruleId, ruleBuilder);
+                        ruleBuilders.put(ruleId, ruleBuilder);
                     }
                     zipIn.closeEntry();
-                    return;
+                    return ruleBuilders;
                 }
                 throw new SonarBallerinaException("Failed to find rule-info.json in the scan tool archive");
             }
@@ -161,9 +186,57 @@ public class RuleGenerator {
         }
     }
 
-    private void extractRuleDocs(String readme) {
+    private void extractRuleDocs(Map<String, RuleMetadata.Builder> builders, String readme) {
         Map<String, String> ruleDocsInMd = scrapeRulesFromReadme(readme);
-        convertRuleDocsToHtml(ruleDocsInMd);
+        Map<String, String> ruleDocsInHtml = convertRuleDocsToHtml(ruleDocsInMd);
+        for (Map.Entry<String, RuleMetadata.Builder> entry : builders.entrySet()) {
+            String id = entry.getKey();
+            RuleMetadata.Builder builder = entry.getValue();
+            String doc = ruleDocsInHtml.get(id);
+            builder.setDescription(Objects.requireNonNullElse(doc, ""));
+        }
+    }
+
+    private void saveRulesIntoCache() {
+        try {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            String json = gson.toJson(rules);
+            Path cachePath = Objects.requireNonNull(RULE_CACHE_PATH.getParent(),
+                    "RULE_CACHE_PATH must have a parent directory");
+            if (!cachePath.toFile().exists()) {
+                if (!cachePath.toFile().mkdirs()) {
+                   logger.warning("Failed to create sonar-ballerina cache directory at " + cachePath.toAbsolutePath() +
+                            ". The rules will not be cached for future use.");
+                   return;
+                }
+            }
+            Files.writeString(RULE_CACHE_PATH, json, StandardCharsets.UTF_8);
+        } catch (IOException ignore) {
+            logger.warning("Failed to save rules into cache at " + RULE_CACHE_PATH.toAbsolutePath() +
+                    ". The rules will not be cached for future use.");
+        }
+    }
+
+    private boolean loadRulesFromCache() {
+        boolean rulesLoadedFromCache = false;
+        rules.clear();
+        if (!Files.exists(RULE_CACHE_PATH)) {
+            logger.severe("Rule cache file does not exist at " + RULE_CACHE_PATH.toAbsolutePath() +
+                    ". Unable to load rules from cache.");
+            return rulesLoadedFromCache;
+        }
+        try {
+            String json = Files.readString(RULE_CACHE_PATH, StandardCharsets.UTF_8);
+            Gson gson = new GsonBuilder().create();
+            Type ruleListType = new RuleMetadataListTypeToken().getType();
+            List<RuleMetadata> cachedRules = gson.fromJson(json, ruleListType);
+            rules.addAll(cachedRules);
+            rulesLoadedFromCache = true;
+        } catch (IOException e) {
+            logger.severe("Failed to read rule cache file at " + RULE_CACHE_PATH.toAbsolutePath() + ". Error: "
+                    + e.getMessage());
+        }
+        return rulesLoadedFromCache;
     }
 
     private Map<String, String> scrapeRulesFromReadme(String readme) {
@@ -174,16 +247,14 @@ public class RuleGenerator {
         return ruleVisitor.getRuleDocsInMd();
     }
 
-    private void convertRuleDocsToHtml(Map<String, String> ruleDocsInMd) {
-        rules.forEach((ruleId, rule) -> {
-            String docInMd = ruleDocsInMd.get(ruleId);
-            if (docInMd == null) {
-                rule.setDescription("");
-                return;
-            }
-            String docInHtml = convertMdToHtml(docInMd);
-            rule.setDescription(docInHtml);
-        });
+    private Map<String, String> convertRuleDocsToHtml(Map<String, String> ruleDocsInMd) {
+        Map<String, String> ruleDocsInHtml = new HashMap<>();
+        for (Map.Entry<String, String> entry : ruleDocsInMd.entrySet()) {
+            String id = entry.getKey();
+            String docInMd = entry.getValue();
+            ruleDocsInHtml.put(id, convertMdToHtml(docInMd));
+        }
+        return ruleDocsInHtml;
     }
 
     private static String convertMdToHtml(String markdown) {
@@ -194,4 +265,6 @@ public class RuleGenerator {
     }
 
     private static class ScanToolRuleInfoListTypeToken extends TypeToken<List<ScanToolRuleInfo>> { }
+
+    private static class RuleMetadataListTypeToken extends TypeToken<List<RuleMetadata>> { }
 }

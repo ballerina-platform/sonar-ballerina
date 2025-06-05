@@ -39,7 +39,7 @@ public class BallerinaProfileDefinition implements BuiltInQualityProfilesDefinit
                 LANGUAGE_KEY);
         RuleGenerator ruleGenerator = RuleGenerator.getInstance();
         try {
-            List<RuleMetadata> ruleMetadata = ruleGenerator.generateRules();
+            List<RuleMetadata> ruleMetadata = ruleGenerator.loadRules();
             for (RuleMetadata metadata : ruleMetadata) {
                 ballerinaQualityProfile.activateRule(RULE_REPOSITORY_KEY, metadata.id());
             }

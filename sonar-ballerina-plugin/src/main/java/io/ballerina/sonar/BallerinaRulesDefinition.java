@@ -41,7 +41,7 @@ public class BallerinaRulesDefinition implements RulesDefinition {
         repository.setName(RULE_REPOSITORY_NAME);
         RuleGenerator ruleMetadataGenerator = RuleGenerator.getInstance();
         try {
-            List<RuleMetadata> ruleDocs = ruleMetadataGenerator.generateRules();
+            List<RuleMetadata> ruleDocs = ruleMetadataGenerator.loadRules();
             for (RuleMetadata ruleDoc : ruleDocs) {
                 repository.createRule(ruleDoc.id())
                         .setName(ruleDoc.name())
