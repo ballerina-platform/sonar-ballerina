@@ -15,4 +15,4 @@ repository = "local"
 
 [[platform]]
 name = "sonarqube"
-path = "../sonar-platform-plugin-0.1.0.jar"
+path = "../sonar-platform-plugin-0.2.0-SNAPSHOT.jar"

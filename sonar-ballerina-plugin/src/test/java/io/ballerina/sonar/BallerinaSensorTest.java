@@ -127,7 +127,7 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         sensor.execute(context);
         System.setProperty("user.dir", userDir);
         List<Issue> issues = context.allIssues().stream().toList();
-        assertIssue(issues.get(0), "ballerina:ballerina-1", "Avoid checkpanic", 21, 17, 21, 39);
+        assertIssue(issues.get(0), "ballerina:ballerina:1", "Avoid checkpanic", 21, 17, 21, 39);
     }
 
     private void assertIssue(Issue issue, String ruleKey, String message, int startLine, int startLineOffset,

@@ -252,3 +252,37 @@ static void checkJarEntriesPathUniqueness(File file) {
         throw new GradleException("Duplicated entries in the jar: '${file.path}': ${duplicatedNames.join(', ')}")
     }
 }
+
+def tomlFilePairs = [
+        [
+                placeholder: file("${project.projectDir}/src/test/resources/test-resources/ballerina-project-with-report/resources/Scan.toml"),
+                output: file("${project.projectDir}/src/test/resources/test-resources/ballerina-project-with-report/Scan.toml")
+        ],
+        [
+                placeholder: file("${project.projectDir}/src/test/resources/test-resources/ballerina-project-wo-report/resources/Scan.toml"),
+                output: file("${project.projectDir}/src/test/resources/test-resources/ballerina-project-wo-report/Scan.toml")
+        ]
+]
+
+def tomlUpdateTasks = []
+
+tomlFilePairs.eachWithIndex { pair, index ->
+    def taskName = "updateTestTomlFile${index}"
+    def updateTask = tasks.register(taskName) {
+        inputs.property("projectVersion", project.version)
+
+        doLast {
+            def newScanToml = pair.placeholder.text.replace("@project.version@", "${project.version}")
+            pair.output.parentFile.mkdirs()
+            pair.output.text = newScanToml
+        }
+    }
+
+    tomlUpdateTasks << updateTask
+}
+
+["processTestResources", "spotbugsTest", "test"].each { taskName ->
+    tasks.named(taskName) {
+        dependsOn tomlUpdateTasks
+    }
+}
