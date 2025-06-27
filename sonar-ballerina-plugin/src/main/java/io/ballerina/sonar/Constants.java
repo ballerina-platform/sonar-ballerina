@@ -33,18 +33,12 @@ public final class Constants {
 
     // Profile and rule definition constants
     static final String PROFILE_NAME = "Ballerina way";
-    static final String JSON_PROFILE_PATH = "io/ballerina/sonar/Ballerina_way_profile.json";
-    static final String JSON_RULE_KEYS_PATH = "/rule_keys.json";
     static final String RULE_REPOSITORY_KEY = "ballerina";
     static final String RULE_REPOSITORY_NAME = "BallerinaAnalyzer";
-    static final String RULE_RESOURCE_FOLDER = "io/ballerina/sonar";
-    static final String RULE_KEY = "key";
 
     // Property definition constants
     static final String FILE_SUFFIXES_KEY = "sonar.ballerina.file.suffixes";
-    static final String FILE_SUFFIXES_DEFAULT_VALUE = ".bal";
-    static final String SUB_CATEGORY = "General";
-    static final String CATEGORY = "Ballerina";
+    static final String FILE_SUFFIXES_DEFAULT_VALUE = "bal";
 
     // Sensor
     static final String ANALYSIS_RESULTS_FILE_PATH = "analyzedResultsPath";

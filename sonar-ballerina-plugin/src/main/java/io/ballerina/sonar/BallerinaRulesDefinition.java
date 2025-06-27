@@ -17,28 +17,16 @@
 
 package io.ballerina.sonar;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import org.sonar.api.SonarRuntime;
+import io.ballerina.sonar.internal.RuleGenerator;
+import io.ballerina.sonar.internal.RuleMetadata;
+import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.rule.RulesDefinition;
-import org.sonarsource.analyzer.commons.RuleMetadataLoader;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import static io.ballerina.sonar.Constants.JSON_PROFILE_PATH;
-import static io.ballerina.sonar.Constants.JSON_RULE_KEYS_PATH;
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
-import static io.ballerina.sonar.Constants.RULE_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_NAME;
-import static io.ballerina.sonar.Constants.RULE_RESOURCE_FOLDER;
 
 /**
  * Represents the implementation of the {@link RulesDefinition} class for Ballerina.
@@ -46,38 +34,25 @@ import static io.ballerina.sonar.Constants.RULE_RESOURCE_FOLDER;
  * @since 0.1.0
  */
 public class BallerinaRulesDefinition implements RulesDefinition {
-    private final SonarRuntime runtime;
-    private final Gson gson = new Gson();
-
-    public BallerinaRulesDefinition(SonarRuntime runtime) {
-        this.runtime = runtime;
-    }
 
     @Override
     public void define(Context context) {
         NewRepository repository = context.createRepository(RULE_REPOSITORY_KEY, LANGUAGE_KEY);
         repository.setName(RULE_REPOSITORY_NAME);
-        RuleMetadataLoader ruleMetadataLoader = new RuleMetadataLoader(RULE_RESOURCE_FOLDER, JSON_PROFILE_PATH,
-                runtime);
-        ruleMetadataLoader.addRulesByRuleKey(repository, loadRuleKeys());
+        RuleGenerator ruleMetadataGenerator = RuleGenerator.getInstance();
+        try {
+            List<RuleMetadata> ruleDocs = ruleMetadataGenerator.loadRules();
+            for (RuleMetadata ruleDoc : ruleDocs) {
+                repository.createRule(ruleDoc.id())
+                        .setName(ruleDoc.name())
+                        .setType(RuleType.valueOf(ruleDoc.type()))
+                        .setHtmlDescription(ruleDoc.description())
+                        .setSeverity(ruleDoc.severity())
+                        .addTags(ruleDoc.tags());
+            }
+        } catch (SonarBallerinaException e) {
+            throw new RuntimeException("Error generating rules for Ballerina", e);
+        }
         repository.done();
-    }
-
-    private List<String> loadRuleKeys() {
-        InputStream inputStream = BallerinaRulesDefinition.class.getResourceAsStream(JSON_RULE_KEYS_PATH);
-        String content;
-        if (inputStream == null) {
-            throw new RuntimeException("Resource not found: " + JSON_RULE_KEYS_PATH);
-        }
-        try (InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
-             BufferedReader br = new BufferedReader(inputStreamReader)) {
-            content = br.lines().collect(Collectors.joining(System.lineSeparator()));
-        } catch (IOException ex) {
-            throw new IllegalStateException(ex);
-        }
-        JsonArray rules = gson.fromJson(content, JsonArray.class);
-        List<String> ruleKeys = new ArrayList<>(rules.size());
-        rules.forEach(rule -> ruleKeys.add(rule.getAsJsonObject().get(RULE_KEY).getAsString()));
-        return ruleKeys;
     }
 }

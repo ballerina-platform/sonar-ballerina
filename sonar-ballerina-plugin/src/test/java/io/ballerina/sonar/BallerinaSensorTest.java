@@ -17,7 +17,6 @@
 
 package io.ballerina.sonar;
 
-import org.assertj.core.api.Assertions;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.TextRange;
 import org.sonar.api.batch.rule.Severity;
@@ -79,28 +78,28 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         }
         List<Issue> issues = context.allIssues().stream().toList();
         Assert.assertEquals(issues.size(), 3);
-        assertIssue(issues.get(0), "ballerina:Ballerina1", "Avoid checkpanic",
+        assertIssue(issues.get(0), "ballerina:ballerina-1", "Avoid checkpanic",
                 21, 17, 21, 39);
-        assertIssue(issues.get(1), "ballerina:ballerina/example_module_static_code_analyzer:1", "rule 1",
+        assertIssue(issues.get(1), "ballerina:ballerina-example_module_static_code_analyzer-1", "rule 1",
                 17, 0, 22, 1);
-        assertIssue(issues.get(2), "ballerina:ballerinax/example_module_static_code_analyzer:1", "rule 1",
+        assertIssue(issues.get(2), "ballerina:ballerinax-example_module_static_code_analyzer-1", "rule 1",
                 17, 0, 22, 1);
         List<AdHocRule> adHocRules = context.allAdHocRules().stream().toList();
         Assert.assertEquals(adHocRules.size(), 1);
         AdHocRule adHocRule = adHocRules.get(0);
         Assert.assertEquals(adHocRule.severity(), Severity.MAJOR);
         Assert.assertEquals(adHocRule.type(), RuleType.CODE_SMELL);
-        Assert.assertEquals(adHocRule.name(), "exampleOrg/example_module_static_code_analyzer:1");
+        Assert.assertEquals(adHocRule.name(), "exampleOrg-example_module_static_code_analyzer-1");
         Assert.assertEquals(adHocRule.description(), "rule 1");
         Assert.assertEquals(adHocRule.engineId(), "ballerina_external_analyzer");
-        Assert.assertEquals(adHocRule.ruleId(), "exampleOrg/example_module_static_code_analyzer:1");
+        Assert.assertEquals(adHocRule.ruleId(), "exampleOrg-example_module_static_code_analyzer-1");
         List<ExternalIssue> externalIssues = context.allExternalIssues().stream().toList();
         Assert.assertEquals(externalIssues.size(), 1);
         ExternalIssue externalIssue = externalIssues.get(0);
         Assert.assertEquals(externalIssue.severity(), Severity.MAJOR);
         Assert.assertEquals(externalIssue.type(), RuleType.CODE_SMELL);
         Assert.assertEquals(externalIssue.engineId(), "ballerina_external_analyzer");
-        Assert.assertEquals(externalIssue.ruleId(), "exampleOrg/example_module_static_code_analyzer:1");
+        Assert.assertEquals(externalIssue.ruleId(), "exampleOrg-example_module_static_code_analyzer-1");
         IssueLocation issueLocation = externalIssue.primaryLocation();
         Assert.assertEquals(issueLocation.message(), "rule 1");
         TextRange textRange = issueLocation.textRange();
@@ -128,20 +127,20 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         sensor.execute(context);
         System.setProperty("user.dir", userDir);
         List<Issue> issues = context.allIssues().stream().toList();
-        assertIssue(issues.get(0), "ballerina:Ballerina1", "Avoid checkpanic", 21, 17, 21, 39);
+        assertIssue(issues.get(0), "ballerina:ballerina:1", "Avoid checkpanic", 21, 17, 21, 39);
     }
 
     private void assertIssue(Issue issue, String ruleKey, String message, int startLine, int startLineOffset,
                              int endLine, int endLineOffset) {
-        Assertions.assertThat(issue.ruleKey().toString()).isEqualTo(ruleKey);
+        Assert.assertEquals(issue.ruleKey().toString(), ruleKey);
         IssueLocation issueLocation = issue.primaryLocation();
-        Assertions.assertThat(issueLocation.message()).isEqualTo(message);
+        Assert.assertEquals(issueLocation.message(), message);
         TextRange textRange = issueLocation.textRange();
         Assert.assertNotNull(textRange);
-        Assertions.assertThat(textRange.start().line()).isEqualTo(startLine);
-        Assertions.assertThat(textRange.start().lineOffset()).isEqualTo(startLineOffset);
-        Assertions.assertThat(textRange.end().line()).isEqualTo(endLine);
-        Assertions.assertThat(textRange.end().lineOffset()).isEqualTo(endLineOffset);
+        Assert.assertEquals(textRange.start().line(), startLine);
+        Assert.assertEquals(textRange.start().lineOffset(), startLineOffset);
+        Assert.assertEquals(textRange.end().line(), endLine);
+        Assert.assertEquals(textRange.end().lineOffset(), endLineOffset);
     }
 
     private BallerinaSensor sensor() {

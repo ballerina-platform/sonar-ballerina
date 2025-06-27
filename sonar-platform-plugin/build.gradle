@@ -15,6 +15,9 @@
  *
  */
 
+import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
+
 plugins {
     id 'java-library'
     id 'checkstyle'
@@ -26,6 +29,7 @@ group = "${group}"
 version = "${version}"
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven {
         url = uri("https://plugins.gradle.org/m2/")
@@ -40,26 +44,25 @@ repositories {
             password System.getenv("packagePAT")
         }
     }
-    // TODO: Remove GitHub packages repository once scan tool package is published to central
-    maven {
-        url = 'https://maven.pkg.github.com/Xenowa/static-code-analysis-tool'
-        credentials {
-            username System.getenv("packageUser")
-            password System.getenv("packagePAT")
-        }
-    }
 }
 
 dependencies {
-    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.0'
-    checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.12.1'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
     implementation group :'com.google.code.gson', name: 'gson', version: "${gsonVersion}"
-
-    // Required Ballerina dependencies
     implementation group: 'org.ballerinalang', name: 'ballerina-tools-api', version: "${ballerinaLangVersion}"
-
-    // Scan Tool dependency
     implementation group: 'io.ballerina.scan', name: 'scan-command', version: "${scanToolVersion}"
+
+    checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.12.1'
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
 }
 
 tasks.withType(JavaExec).configureEach {
@@ -101,14 +104,14 @@ checkstyleTest.dependsOn(downloadCheckstyleRuleFiles)
 
 // Setting up spotbugs
 spotbugsMain {
-    effort "max"
-    reportLevel "low"
+    effort = Effort.valueOf("MAX")
+    reportLevel = Confidence.valueOf("LOW")
 
     reportsDir = file("$project.buildDir/reports/spotbugs")
 
     reports {
-        html.enabled true
-        text.enabled = true
+        html.required.set(true)
+        text.required.set(true)
     }
 
     def excludeFile = file("${projectDir}/spotbugs-exclude.xml")
@@ -118,14 +121,14 @@ spotbugsMain {
 }
 
 spotbugsTest {
-    effort = "max"
-    reportLevel = "low"
+    effort = Effort.valueOf("MAX")
+    reportLevel = Confidence.valueOf("LOW")
 
     reportsDir = file("$project.buildDir/reports/spotbugs")
 
     reports {
-        html.enabled true
-        text.enabled = true
+        html.required.set(true)
+        text.required.set(true)
     }
 
     def excludeFile = file("${projectDir}/spotbugs-exclude.xml")

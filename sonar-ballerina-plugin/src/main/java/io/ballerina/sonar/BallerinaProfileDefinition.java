@@ -17,10 +17,12 @@
 
 package io.ballerina.sonar;
 
+import io.ballerina.sonar.internal.RuleGenerator;
+import io.ballerina.sonar.internal.RuleMetadata;
 import org.sonar.api.server.profile.BuiltInQualityProfilesDefinition;
-import org.sonarsource.analyzer.commons.BuiltInQualityProfileJsonLoader;
 
-import static io.ballerina.sonar.Constants.JSON_PROFILE_PATH;
+import java.util.List;
+
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
 import static io.ballerina.sonar.Constants.PROFILE_NAME;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
@@ -35,7 +37,15 @@ public class BallerinaProfileDefinition implements BuiltInQualityProfilesDefinit
     public void define(Context context) {
         NewBuiltInQualityProfile ballerinaQualityProfile = context.createBuiltInQualityProfile(PROFILE_NAME,
                 LANGUAGE_KEY);
-        BuiltInQualityProfileJsonLoader.load(ballerinaQualityProfile, RULE_REPOSITORY_KEY, JSON_PROFILE_PATH);
-        ballerinaQualityProfile.done();
+        RuleGenerator ruleGenerator = RuleGenerator.getInstance();
+        try {
+            List<RuleMetadata> ruleMetadata = ruleGenerator.loadRules();
+            for (RuleMetadata metadata : ruleMetadata) {
+                ballerinaQualityProfile.activateRule(RULE_REPOSITORY_KEY, metadata.id());
+            }
+            ballerinaQualityProfile.done();
+        } catch (SonarBallerinaException e) {
+            throw new RuntimeException("Error registering Ballerina profile", e);
+        }
     }
 }

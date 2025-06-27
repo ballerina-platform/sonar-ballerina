@@ -40,12 +40,10 @@ import static io.ballerina.sonar.Constants.END_LINE;
 import static io.ballerina.sonar.Constants.END_LINE_OFFSET;
 import static io.ballerina.sonar.Constants.FILE_NAME;
 import static io.ballerina.sonar.Constants.FILE_PATH;
-import static io.ballerina.sonar.Constants.FORWARD_SLASH;
 import static io.ballerina.sonar.Constants.ISSUES_FILE_PATH;
 import static io.ballerina.sonar.Constants.MESSAGE;
 import static io.ballerina.sonar.Constants.RULE_ID;
 import static io.ballerina.sonar.Constants.RULE_KIND;
-import static io.ballerina.sonar.Constants.RULE_PREFIX;
 import static io.ballerina.sonar.Constants.SOURCE;
 import static io.ballerina.sonar.Constants.START_LINE;
 import static io.ballerina.sonar.Constants.PLATFORM_NAME;
@@ -128,19 +126,10 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
             IssueImpl reportedIssue = (IssueImpl) issue;
             JsonObject issueObject = new JsonObject();
             issueObject.addProperty(START_LINE, reportedIssue.location().lineRange().startLine().line());
-            issueObject.addProperty(START_LINE_OFFSET, reportedIssue.location().lineRange().startLine()
-                    .offset());
+            issueObject.addProperty(START_LINE_OFFSET, reportedIssue.location().lineRange().startLine().offset());
             issueObject.addProperty(END_LINE, reportedIssue.location().lineRange().endLine().line());
             issueObject.addProperty(END_LINE_OFFSET, reportedIssue.location().lineRange().endLine().offset());
-            String fullyQualifiedRuleId = reportedIssue.rule().id();
-            String[] parts = fullyQualifiedRuleId.split(":");
-            String ruleWithPrefix;
-            if (parts[0].split(FORWARD_SLASH).length == 1) {
-                ruleWithPrefix = RULE_PREFIX + parts[1];
-            } else {
-                ruleWithPrefix = fullyQualifiedRuleId;
-            }
-            issueObject.addProperty(RULE_ID, ruleWithPrefix);
+            issueObject.addProperty(RULE_ID, reportedIssue.rule().id());
             issueObject.addProperty(MESSAGE, reportedIssue.rule().description());
             issueObject.addProperty(RULE_KIND, reportedIssue.rule().kind().toString());
             issueObject.addProperty(SOURCE, reportedIssue.source().toString());
