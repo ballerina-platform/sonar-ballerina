@@ -12,3 +12,6 @@ build/
 
 # IntelliJ IDEA
 .idea/
+
+#Ignore all .deb files
+*.deb
