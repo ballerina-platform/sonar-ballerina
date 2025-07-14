@@ -21,6 +21,7 @@ import com.github.spotbugs.snom.Effort
 plugins {
     id 'java-library'
     id 'checkstyle'
+    id 'maven-publish'
     id "com.github.spotbugs"
     id "de.undercouch.download"
 }
@@ -134,5 +135,27 @@ spotbugsTest {
     def excludeFile = file("${projectDir}/spotbugs-exclude.xml")
     if (excludeFile.exists()) {
         excludeFilter = excludeFile
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId group
+            artifactId project.name
+            version version
+        }
+    }
+
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/ballerina-platform/sonar-ballerina")
+            credentials {
+                username = System.getenv("publishUser")
+                password = System.getenv("publishPAT")
+            }
+        }
     }
 }
