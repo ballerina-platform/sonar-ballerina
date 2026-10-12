@@ -20,8 +20,13 @@ package io.ballerina.sonar.internal;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import io.ballerina.sonar.SonarBallerinaException;
+import org.commonmark.Extension;
+import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
@@ -38,6 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,6 +68,7 @@ public class RuleGenerator {
     private static final RuleGenerator INSTANCE = new RuleGenerator();
 
     private static final String SCAN_TOOL_CENTRAL_URI = "https://api.central.ballerina.io/2.0/registry/tools/scan/";
+    private static final String BALA_URL_FIELD = "balaURL";
     private static final String ACCEPT_HEADER_NAME = "Accept";
     private static final String ACCEPT_HEADER_VALUE = "application/json";
     private static final String CONTENT_DISPOSITION_HEADER_NAME = "Content-Disposition";
@@ -69,6 +76,13 @@ public class RuleGenerator {
     private static final String ACCEPT_ENCODING_HEADER_NAME = "Accept-Encoding";
     private static final String ACCEPT_ENCODING_HEADER_VALUE = "identity";
     private static final String RULE_INFO_FILE_PATH = "resources/rule-info.json";
+    private static final String RULE_DOCS_URI = "https://raw.githubusercontent.com/ballerina-platform/" +
+            "ballerina-dev-website/master/swan-lake/development-tutorials/static-code-analysis/scan-rules.md";
+    private static final String BUNDLED_RULE_DOCS_PATH = "/rule-docs/scan-rules.md";
+    private static final Duration RULE_DOCS_FETCH_TIMEOUT = Duration.ofSeconds(30);
+    private static final String BALLERINA_WEBSITE_URL = "https://ballerina.io";
+    private static final String RULE_DOCS_PAGE_URL = BALLERINA_WEBSITE_URL + "/learn/scan-rules/";
+    private static final List<Extension> MARKDOWN_EXTENSIONS = List.of(TablesExtension.create());
     private static final Path RULE_CACHE_PATH = Paths.get(System.getProperty("user.home"), ".sonar-ballerina",
             "rule-cache.json");
 
@@ -108,13 +122,12 @@ public class RuleGenerator {
     }
 
     private void generateRules() throws SonarBallerinaException {
-        ScanToolMetadata scanToolMetadata = getScanToolMetadata();
-        Map<String, RuleMetadata.Builder> ruleBuilders = extractRuleInfo(scanToolMetadata.getBalaURL());
-        extractRuleDocs(ruleBuilders, scanToolMetadata.getReadme());
+        Map<String, RuleMetadata.Builder> ruleBuilders = extractRuleInfo(getScanToolBalaUrl());
+        extractRuleDocs(ruleBuilders);
         rules.addAll(ruleBuilders.values().stream().map(RuleMetadata.Builder::build).toList());
     }
 
-    private ScanToolMetadata getScanToolMetadata() throws SonarBallerinaException {
+    private String getScanToolBalaUrl() throws SonarBallerinaException {
         HttpRequest pullToolReq = HttpRequest.newBuilder()
                 .GET()
                 .uri(URI.create(SCAN_TOOL_CENTRAL_URI))
@@ -126,8 +139,13 @@ public class RuleGenerator {
                 String errorMsg = "Failed to fetch the scan tool metadata with status code: " + response.statusCode();
                 throw new SonarBallerinaException(errorMsg);
             }
-            Gson gson = new GsonBuilder().create();
-            return gson.fromJson(response.body(), ScanToolMetadata.class);
+            JsonElement balaUrl = JsonParser.parseString(response.body()).getAsJsonObject().get(BALA_URL_FIELD);
+            if (balaUrl == null || !balaUrl.isJsonPrimitive()) {
+                throw new SonarBallerinaException("Failed to find the bala URL in the scan tool metadata");
+            }
+            return balaUrl.getAsString();
+        } catch (JsonParseException | IllegalStateException e) {
+            throw new SonarBallerinaException("Failed to parse the scan tool metadata", e);
         } catch (IOException | InterruptedException e) {
             String errorMsg = "Failed to fetch the scan tool metadata";
             throw new SonarBallerinaException(errorMsg, e);
@@ -186,9 +204,8 @@ public class RuleGenerator {
         }
     }
 
-    private void extractRuleDocs(Map<String, RuleMetadata.Builder> builders, String readme) {
-        Map<String, String> ruleDocsInMd = scrapeRulesFromReadme(readme);
-        Map<String, String> ruleDocsInHtml = convertRuleDocsToHtml(ruleDocsInMd);
+    private void extractRuleDocs(Map<String, RuleMetadata.Builder> builders) {
+        Map<String, String> ruleDocsInHtml = convertRuleDocsToHtml(loadRuleDocs());
         for (Map.Entry<String, RuleMetadata.Builder> entry : builders.entrySet()) {
             String id = entry.getKey();
             RuleMetadata.Builder builder = entry.getValue();
@@ -239,28 +256,82 @@ public class RuleGenerator {
         return rulesLoadedFromCache;
     }
 
-    private Map<String, String> scrapeRulesFromReadme(String readme) {
-        Parser markdownParser = Parser.builder().build();
-        Node document = markdownParser.parse(readme);
-        RuleVisitor ruleVisitor = new RuleVisitor();
-        document.accept(ruleVisitor);
-        return ruleVisitor.getRuleDocsInMd();
+    /**
+     * Loads the rule docs from the Ballerina website, falling back to the docs bundled with the plugin when they
+     * cannot be fetched or contain no rules.
+     *
+     * @return rule docs in Markdown, keyed by rule ID
+     */
+    private Map<String, String> loadRuleDocs() {
+        try {
+            Map<String, String> ruleDocsInMd = RuleDocParser.parse(fetchRuleDocs());
+            if (!ruleDocsInMd.isEmpty()) {
+                return ruleDocsInMd;
+            }
+            logger.warning("No rules were found in the rule documentation at " + RULE_DOCS_URI + ".");
+        } catch (SonarBallerinaException e) {
+            logger.warning(e.getMessage() + ".");
+        }
+
+        logger.warning("Using the rule documentation bundled with the plugin.");
+        try {
+            return RuleDocParser.parse(readBundledRuleDocs());
+        } catch (SonarBallerinaException e) {
+            logger.warning(e.getMessage() + ". Rules will be loaded without descriptions.");
+            return Collections.emptyMap();
+        }
+    }
+
+    private String readBundledRuleDocs() throws SonarBallerinaException {
+        try (InputStream in = RuleGenerator.class.getResourceAsStream(BUNDLED_RULE_DOCS_PATH)) {
+            if (in == null) {
+                throw new SonarBallerinaException("Failed to find the bundled rule documentation at "
+                        + BUNDLED_RULE_DOCS_PATH);
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new SonarBallerinaException("Failed to read the bundled rule documentation", e);
+        }
+    }
+
+    private String fetchRuleDocs() throws SonarBallerinaException {
+        HttpRequest ruleDocsRequest = HttpRequest.newBuilder()
+                .GET()
+                .uri(URI.create(RULE_DOCS_URI))
+                .timeout(RULE_DOCS_FETCH_TIMEOUT)
+                .build();
+        try {
+            HttpResponse<String> response = httpClient.send(ruleDocsRequest, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new SonarBallerinaException("Failed to fetch the rule documentation with status code: "
+                        + response.statusCode());
+            }
+            return response.body();
+        } catch (IOException | InterruptedException e) {
+            throw new SonarBallerinaException("Failed to fetch the rule documentation", e);
+        }
     }
 
     private Map<String, String> convertRuleDocsToHtml(Map<String, String> ruleDocsInMd) {
         Map<String, String> ruleDocsInHtml = new HashMap<>();
         for (Map.Entry<String, String> entry : ruleDocsInMd.entrySet()) {
             String id = entry.getKey();
-            String docInMd = entry.getValue();
+            String docInMd = resolveRelativeLinks(entry.getValue());
             ruleDocsInHtml.put(id, convertMdToHtml(docInMd));
         }
         return ruleDocsInHtml;
     }
 
+    private static String resolveRelativeLinks(String markdown) {
+        return markdown
+                .replace("](#", "](" + RULE_DOCS_PAGE_URL + "#")
+                .replace("](/", "](" + BALLERINA_WEBSITE_URL + "/");
+    }
+
     private static String convertMdToHtml(String markdown) {
-        Parser markdownParser = Parser.builder().build();
+        Parser markdownParser = Parser.builder().extensions(MARKDOWN_EXTENSIONS).build();
         Node document = markdownParser.parse(markdown);
-        HtmlRenderer renderer = HtmlRenderer.builder().build();
+        HtmlRenderer renderer = HtmlRenderer.builder().extensions(MARKDOWN_EXTENSIONS).build();
         return renderer.render(document);
     }
 

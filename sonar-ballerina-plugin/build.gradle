@@ -50,6 +50,7 @@ dependencies {
     implementation "com.google.code.gson:gson:${gsonVersion}"
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
     implementation group: 'org.commonmark', name: 'commonmark', version: "${commonMarkVersion}"
+    implementation group: 'org.commonmark', name: 'commonmark-ext-gfm-tables', version: "${commonMarkVersion}"
 
     checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: "${puppycrawlCheckstyleVersion}"
 
@@ -66,6 +67,42 @@ java {
 tasks.withType(JavaCompile).configureEach {
     options.release = 17
 }
+
+def ruleDocsUrl = 'https://raw.githubusercontent.com/ballerina-platform/ballerina-dev-website/master/' +
+        'swan-lake/development-tutorials/static-code-analysis/scan-rules.md'
+def ruleDocsSnapshot = file('src/main/rule-docs/scan-rules.md')
+def generatedRuleDocsDir = layout.buildDirectory.dir('generated/rule-docs')
+
+tasks.register('prepareRuleDocs') {
+    description = 'Bundles the latest scan rule docs, falling back to the committed snapshot when offline.'
+    inputs.file(ruleDocsSnapshot)
+    outputs.dir(generatedRuleDocsDir)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def target = generatedRuleDocsDir.get().file('rule-docs/scan-rules.md').asFile
+        target.parentFile.mkdirs()
+        if (!gradle.startParameter.offline) {
+            try {
+                def connection = new URL(ruleDocsUrl).openConnection()
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 30_000
+                def docs = connection.inputStream.withCloseable { it.getText('UTF-8') }
+                if (docs.contains('**Rule ID**')) {
+                    target.setText(docs, 'UTF-8')
+                    return
+                }
+                logger.warn("The scan rule docs at ${ruleDocsUrl} do not contain any rules.")
+            } catch (IOException e) {
+                logger.warn("Failed to fetch the scan rule docs from ${ruleDocsUrl}: ${e.message}")
+            }
+        }
+        logger.warn("Bundling the committed scan rule docs snapshot at ${ruleDocsSnapshot}.")
+        target.bytes = ruleDocsSnapshot.bytes
+    }
+}
+
+sourceSets.main.resources.srcDir(tasks.named('prepareRuleDocs'))
 
 // Setting up checkstyle
 task downloadCheckstyleRuleFiles(type: Download) {
