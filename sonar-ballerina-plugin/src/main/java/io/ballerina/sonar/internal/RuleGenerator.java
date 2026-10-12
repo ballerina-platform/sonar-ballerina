@@ -34,6 +34,7 @@ import org.commonmark.renderer.html.HtmlRenderer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -51,6 +52,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -61,7 +69,9 @@ import java.util.zip.ZipInputStream;
  * @since 0.2.0
  */
 public class RuleGenerator {
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(HTTP_CONNECT_TIMEOUT_SECONDS))
+            .build();
     private final List<RuleMetadata> rules = new ArrayList<>();
     Logger logger = Logger.getLogger(RuleGenerator.class.getName());
 
@@ -76,13 +86,22 @@ public class RuleGenerator {
     private static final String ACCEPT_ENCODING_HEADER_NAME = "Accept-Encoding";
     private static final String ACCEPT_ENCODING_HEADER_VALUE = "identity";
     private static final String RULE_INFO_FILE_PATH = "resources/rule-info.json";
-    private static final String RULE_DOCS_URI = "https://raw.githubusercontent.com/ballerina-platform/" +
-            "ballerina-dev-website/master/swan-lake/development-tutorials/static-code-analysis/scan-rules.md";
+    private static final int HTTP_CONNECT_TIMEOUT_SECONDS = 10;
+    // Generated at build time from the rule docs URL in build.gradle
+    private static final String RULE_DOCS_SOURCE_PATH = "/rule-docs/source.properties";
+    private static final String RULE_DOCS_URL_PROPERTY = "url";
     private static final String BUNDLED_RULE_DOCS_PATH = "/rule-docs/scan-rules.md";
-    private static final Duration RULE_DOCS_FETCH_TIMEOUT = Duration.ofSeconds(30);
-    private static final String BALLERINA_WEBSITE_URL = "https://ballerina.io";
-    private static final String RULE_DOCS_PAGE_URL = BALLERINA_WEBSITE_URL + "/learn/scan-rules/";
+    private static final Duration RULE_DOCS_FETCH_TIMEOUT = Duration.ofSeconds(10);
+    private static final URI RULE_DOCS_PAGE_URI = URI.create("https://ballerina.io/learn/scan-rules/");
     private static final List<Extension> MARKDOWN_EXTENSIONS = List.of(TablesExtension.create());
+    private static final Parser MARKDOWN_PARSER = Parser.builder().extensions(MARKDOWN_EXTENSIONS).build();
+    // The rule docs are fetched at runtime, so raw HTML is escaped and unsafe URLs are dropped
+    private static final HtmlRenderer HTML_RENDERER = HtmlRenderer.builder()
+            .extensions(MARKDOWN_EXTENSIONS)
+            .escapeHtml(true)
+            .sanitizeUrls(true)
+            .attributeProviderFactory(context -> RuleGenerator::resolveRelativeUrls)
+            .build();
     private static final Path RULE_CACHE_PATH = Paths.get(System.getProperty("user.home"), ".sonar-ballerina",
             "rule-cache.json");
 
@@ -122,8 +141,10 @@ public class RuleGenerator {
     }
 
     private void generateRules() throws SonarBallerinaException {
+        // Fetch the rule docs while the scan tool is being downloaded, so that the fetch does not add to startup time
+        CompletableFuture<String> remoteRuleDocs = fetchRuleDocs();
         Map<String, RuleMetadata.Builder> ruleBuilders = extractRuleInfo(getScanToolBalaUrl());
-        extractRuleDocs(ruleBuilders);
+        extractRuleDocs(ruleBuilders, remoteRuleDocs);
         rules.addAll(ruleBuilders.values().stream().map(RuleMetadata.Builder::build).toList());
     }
 
@@ -146,7 +167,10 @@ public class RuleGenerator {
             return balaUrl.getAsString();
         } catch (JsonParseException | IllegalStateException e) {
             throw new SonarBallerinaException("Failed to parse the scan tool metadata", e);
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SonarBallerinaException("Interrupted while fetching the scan tool metadata", e);
+        } catch (IOException e) {
             String errorMsg = "Failed to fetch the scan tool metadata";
             throw new SonarBallerinaException(errorMsg, e);
         }
@@ -199,18 +223,32 @@ public class RuleGenerator {
                 }
                 throw new SonarBallerinaException("Failed to find rule-info.json in the scan tool archive");
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SonarBallerinaException("Interrupted while downloading the scan tool", e);
+        } catch (IOException e) {
             throw new SonarBallerinaException("Failed to download the scan tool", e);
         }
     }
 
-    private void extractRuleDocs(Map<String, RuleMetadata.Builder> builders) {
-        Map<String, String> ruleDocsInHtml = convertRuleDocsToHtml(loadRuleDocs());
+    private void extractRuleDocs(Map<String, RuleMetadata.Builder> builders,
+                                 CompletableFuture<String> remoteRuleDocs) throws SonarBallerinaException {
+        Map<String, String> ruleDocsInMd = loadRuleDocs(remoteRuleDocs);
+        List<String> undocumentedRules = new ArrayList<>();
         for (Map.Entry<String, RuleMetadata.Builder> entry : builders.entrySet()) {
             String id = entry.getKey();
-            RuleMetadata.Builder builder = entry.getValue();
-            String doc = ruleDocsInHtml.get(id);
-            builder.setDescription(Objects.requireNonNullElse(doc, ""));
+            String docInMd = ruleDocsInMd.get(id);
+            if (docInMd == null) {
+                undocumentedRules.add(id);
+                entry.getValue().setDescription("");
+                continue;
+            }
+            entry.getValue().setDescription(convertMdToHtml(docInMd));
+        }
+        if (!undocumentedRules.isEmpty()) {
+            Collections.sort(undocumentedRules);
+            logger.warning("No documentation was found for the rules " + undocumentedRules
+                    + ". They will be loaded without descriptions.");
         }
     }
 
@@ -257,82 +295,132 @@ public class RuleGenerator {
     }
 
     /**
-     * Loads the rule docs from the Ballerina website, falling back to the docs bundled with the plugin when they
-     * cannot be fetched or contain no rules.
+     * Loads the rule docs bundled with the plugin and overlays the docs fetched from the Ballerina website, so that a
+     * rule missing from the fetched docs keeps its bundled description.
      *
+     * @param remoteRuleDocs the pending fetch of the rule docs from the Ballerina website
      * @return rule docs in Markdown, keyed by rule ID
+     * @throws SonarBallerinaException if the thread is interrupted while waiting for the fetch
      */
-    private Map<String, String> loadRuleDocs() {
+    private Map<String, String> loadRuleDocs(CompletableFuture<String> remoteRuleDocs)
+            throws SonarBallerinaException {
+        Map<String, String> bundledDocs = Collections.emptyMap();
         try {
-            Map<String, String> ruleDocsInMd = RuleDocParser.parse(fetchRuleDocs());
-            if (!ruleDocsInMd.isEmpty()) {
-                return ruleDocsInMd;
-            }
-            logger.warning("No rules were found in the rule documentation at " + RULE_DOCS_URI + ".");
+            bundledDocs = RuleDocParser.parse(readBundledResource(BUNDLED_RULE_DOCS_PATH));
         } catch (SonarBallerinaException e) {
             logger.warning(e.getMessage() + ".");
         }
 
-        logger.warning("Using the rule documentation bundled with the plugin.");
+        Map<String, String> remoteDocs = Collections.emptyMap();
         try {
-            return RuleDocParser.parse(readBundledRuleDocs());
-        } catch (SonarBallerinaException e) {
-            logger.warning(e.getMessage() + ". Rules will be loaded without descriptions.");
-            return Collections.emptyMap();
+            remoteDocs = RuleDocParser.parse(remoteRuleDocs.get(RULE_DOCS_FETCH_TIMEOUT.toSeconds(), TimeUnit.SECONDS));
+            if (remoteDocs.isEmpty()) {
+                logger.warning("No rules were found in the fetched rule documentation.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SonarBallerinaException("Interrupted while fetching the rule documentation", e);
+        } catch (ExecutionException e) {
+            logger.warning(e.getCause().getMessage() + ".");
+        } catch (TimeoutException | CancellationException e) {
+            logger.warning("Timed out while fetching the rule documentation.");
         }
+        if (remoteDocs.isEmpty()) {
+            logger.warning("Using the rule documentation bundled with the plugin.");
+        }
+        return mergeRuleDocs(bundledDocs, remoteDocs);
     }
 
-    private String readBundledRuleDocs() throws SonarBallerinaException {
-        try (InputStream in = RuleGenerator.class.getResourceAsStream(BUNDLED_RULE_DOCS_PATH)) {
+    /**
+     * Overlays the remote rule docs on the bundled rule docs.
+     *
+     * @param bundledDocs rule docs bundled with the plugin, keyed by rule ID
+     * @param remoteDocs  rule docs fetched from the Ballerina website, keyed by rule ID
+     * @return the remote doc of each rule, or its bundled doc when the remote docs do not contain the rule
+     */
+    static Map<String, String> mergeRuleDocs(Map<String, String> bundledDocs, Map<String, String> remoteDocs) {
+        Map<String, String> ruleDocs = new HashMap<>(bundledDocs);
+        ruleDocs.putAll(remoteDocs);
+        return ruleDocs;
+    }
+
+    private static String readBundledResource(String path) throws SonarBallerinaException {
+        try (InputStream in = RuleGenerator.class.getResourceAsStream(path)) {
             if (in == null) {
-                throw new SonarBallerinaException("Failed to find the bundled rule documentation at "
-                        + BUNDLED_RULE_DOCS_PATH);
+                throw new SonarBallerinaException("Failed to find the bundled resource at " + path);
             }
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new SonarBallerinaException("Failed to read the bundled rule documentation", e);
+            throw new SonarBallerinaException("Failed to read the bundled resource at " + path, e);
         }
     }
 
-    private String fetchRuleDocs() throws SonarBallerinaException {
+    private static URI readRuleDocsUri() throws SonarBallerinaException {
+        Properties source = new Properties();
+        try {
+            source.load(new StringReader(readBundledResource(RULE_DOCS_SOURCE_PATH)));
+            String url = source.getProperty(RULE_DOCS_URL_PROPERTY);
+            if (url == null || url.isBlank()) {
+                throw new SonarBallerinaException("Failed to find the rule documentation URL in "
+                        + RULE_DOCS_SOURCE_PATH);
+            }
+            return URI.create(url.strip());
+        } catch (IOException | IllegalArgumentException e) {
+            throw new SonarBallerinaException("Failed to read the rule documentation URL from "
+                    + RULE_DOCS_SOURCE_PATH, e);
+        }
+    }
+
+    private CompletableFuture<String> fetchRuleDocs() {
+        URI ruleDocsUri;
+        try {
+            ruleDocsUri = readRuleDocsUri();
+        } catch (SonarBallerinaException e) {
+            return CompletableFuture.failedFuture(e);
+        }
         HttpRequest ruleDocsRequest = HttpRequest.newBuilder()
                 .GET()
-                .uri(URI.create(RULE_DOCS_URI))
+                .uri(ruleDocsUri)
                 .timeout(RULE_DOCS_FETCH_TIMEOUT)
                 .build();
+        return httpClient.sendAsync(ruleDocsRequest, HttpResponse.BodyHandlers.ofString())
+                .exceptionally(e -> {
+                    throw new CompletionException(new SonarBallerinaException(
+                            "Failed to fetch the rule documentation from " + ruleDocsUri, e));
+                })
+                .thenApply(response -> {
+                    if (response.statusCode() != 200) {
+                        throw new CompletionException(new SonarBallerinaException(
+                                "Failed to fetch the rule documentation from " + ruleDocsUri
+                                        + " with status code: " + response.statusCode()));
+                    }
+                    return response.body();
+                });
+    }
+
+    static String convertMdToHtml(String markdown) {
+        return HTML_RENDERER.render(MARKDOWN_PARSER.parse(markdown));
+    }
+
+    /**
+     * Resolves relative link and image URLs against the scan rules page, since the descriptions are shown in
+     * SonarQube rather than on the Ballerina website.
+     */
+    private static void resolveRelativeUrls(Node node, String tagName, Map<String, String> attributes) {
+        resolveRelativeUrl(attributes, "href");
+        resolveRelativeUrl(attributes, "src");
+    }
+
+    private static void resolveRelativeUrl(Map<String, String> attributes, String attribute) {
+        String url = attributes.get(attribute);
+        if (url == null) {
+            return;
+        }
         try {
-            HttpResponse<String> response = httpClient.send(ruleDocsRequest, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
-                throw new SonarBallerinaException("Failed to fetch the rule documentation with status code: "
-                        + response.statusCode());
-            }
-            return response.body();
-        } catch (IOException | InterruptedException e) {
-            throw new SonarBallerinaException("Failed to fetch the rule documentation", e);
+            attributes.put(attribute, RULE_DOCS_PAGE_URI.resolve(url).toString());
+        } catch (IllegalArgumentException ignore) {
+            // Leave a URL that cannot be parsed as it is
         }
-    }
-
-    private Map<String, String> convertRuleDocsToHtml(Map<String, String> ruleDocsInMd) {
-        Map<String, String> ruleDocsInHtml = new HashMap<>();
-        for (Map.Entry<String, String> entry : ruleDocsInMd.entrySet()) {
-            String id = entry.getKey();
-            String docInMd = resolveRelativeLinks(entry.getValue());
-            ruleDocsInHtml.put(id, convertMdToHtml(docInMd));
-        }
-        return ruleDocsInHtml;
-    }
-
-    private static String resolveRelativeLinks(String markdown) {
-        return markdown
-                .replace("](#", "](" + RULE_DOCS_PAGE_URL + "#")
-                .replace("](/", "](" + BALLERINA_WEBSITE_URL + "/");
-    }
-
-    private static String convertMdToHtml(String markdown) {
-        Parser markdownParser = Parser.builder().extensions(MARKDOWN_EXTENSIONS).build();
-        Node document = markdownParser.parse(markdown);
-        HtmlRenderer renderer = HtmlRenderer.builder().extensions(MARKDOWN_EXTENSIONS).build();
-        return renderer.render(document);
     }
 
     private static class ScanToolRuleInfoListTypeToken extends TypeToken<List<ScanToolRuleInfo>> { }

@@ -35,9 +35,9 @@ import java.util.regex.Pattern;
 final class RuleDocParser {
     private static final Pattern RULE_ID_ROW = Pattern.compile("^\\|\\s*\\*\\*Rule ID\\*\\*\\s*\\|\\s*([^|]+?)\\s*\\|");
     private static final Pattern SUB_HEADING = Pattern.compile("^#{4,6} ");
+    private static final Pattern CODE_FENCE = Pattern.compile("^ {0,3}(`{3,}|~{3,})(.*)$");
     private static final String SECTION_HEADING_PREFIX = "## ";
     private static final String RULE_HEADING_PREFIX = "### ";
-    private static final String CODE_FENCE = "```";
 
     private final Map<String, String> ruleDocsInMd = new HashMap<>();
     private StringBuilder currentRule = null;
@@ -48,10 +48,12 @@ final class RuleDocParser {
 
     static Map<String, String> parse(String markdown) {
         RuleDocParser parser = new RuleDocParser();
-        boolean inCodeBlock = false;
+        // The fence that opened the current code block, or null when outside a code block
+        String openFence = null;
         for (String line : markdown.split("\\R", -1)) {
-            boolean isFence = line.strip().startsWith(CODE_FENCE);
-            if (!inCodeBlock && !isFence) {
+            Matcher fenceMatcher = CODE_FENCE.matcher(line);
+            boolean isFence = fenceMatcher.matches();
+            if (openFence == null && !isFence) {
                 if (line.startsWith(SECTION_HEADING_PREFIX)) {
                     parser.endRule();
                     continue;
@@ -66,12 +68,28 @@ final class RuleDocParser {
                 }
             }
             if (isFence) {
-                inCodeBlock = !inCodeBlock;
+                String fence = fenceMatcher.group(1);
+                String rest = fenceMatcher.group(2);
+                if (openFence == null) {
+                    // The info string of a backtick fence cannot contain backticks
+                    if (fence.charAt(0) == '~' || rest.indexOf('`') < 0) {
+                        openFence = fence;
+                    }
+                } else if (closesFence(openFence, fence, rest)) {
+                    openFence = null;
+                }
             }
             parser.appendLine(line);
         }
         parser.endRule();
         return parser.ruleDocsInMd;
+    }
+
+    /**
+     * A closing fence uses the same character as the opening fence, is at least as long, and has nothing after it.
+     */
+    private static boolean closesFence(String openFence, String fence, String rest) {
+        return fence.charAt(0) == openFence.charAt(0) && fence.length() >= openFence.length() && rest.isBlank();
     }
 
     private void appendLine(String line) {

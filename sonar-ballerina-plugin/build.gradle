@@ -73,32 +73,43 @@ def ruleDocsUrl = 'https://raw.githubusercontent.com/ballerina-platform/ballerin
 def ruleDocsSnapshot = file('src/main/rule-docs/scan-rules.md')
 def generatedRuleDocsDir = layout.buildDirectory.dir('generated/rule-docs')
 
+// Bundles the committed snapshot, so that builds are reproducible and only reviewed docs are bundled.
+// The URL is bundled too, so that the plugin fetches the latest docs at runtime from the same source.
 tasks.register('prepareRuleDocs') {
-    description = 'Bundles the latest scan rule docs, falling back to the committed snapshot when offline.'
-    inputs.file(ruleDocsSnapshot)
-    outputs.dir(generatedRuleDocsDir)
+    description = 'Bundles the committed scan rule docs snapshot and the URL to fetch the latest docs from.'
+    def snapshot = ruleDocsSnapshot
+    def url = ruleDocsUrl
+    def outputDir = generatedRuleDocsDir
+    inputs.file(snapshot)
+    inputs.property('ruleDocsUrl', url)
+    outputs.dir(outputDir)
+
+    doLast {
+        def targetDir = outputDir.get().dir('rule-docs').asFile
+        targetDir.mkdirs()
+        new File(targetDir, 'scan-rules.md').bytes = snapshot.bytes
+        new File(targetDir, 'source.properties').setText("url=${url}\n", 'ISO-8859-1')
+    }
+}
+
+// Run with `./gradlew updateRuleDocsSnapshot` and commit the result to update the bundled docs.
+tasks.register('updateRuleDocsSnapshot') {
+    description = 'Updates the committed scan rule docs snapshot from the Ballerina website.'
+    def snapshot = ruleDocsSnapshot
+    def url = ruleDocsUrl
     outputs.upToDateWhen { false }
 
     doLast {
-        def target = generatedRuleDocsDir.get().file('rule-docs/scan-rules.md').asFile
-        target.parentFile.mkdirs()
-        if (!gradle.startParameter.offline) {
-            try {
-                def connection = new URL(ruleDocsUrl).openConnection()
-                connection.connectTimeout = 10_000
-                connection.readTimeout = 30_000
-                def docs = connection.inputStream.withCloseable { it.getText('UTF-8') }
-                if (docs.contains('**Rule ID**')) {
-                    target.setText(docs, 'UTF-8')
-                    return
-                }
-                logger.warn("The scan rule docs at ${ruleDocsUrl} do not contain any rules.")
-            } catch (IOException e) {
-                logger.warn("Failed to fetch the scan rule docs from ${ruleDocsUrl}: ${e.message}")
-            }
+        def connection = new URL(url).openConnection()
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 30_000
+        def docs = connection.inputStream.withCloseable { it.getText('UTF-8') }
+        def ruleCount = docs.readLines().count { it ==~ /^\|\s*\*\*Rule ID\*\*\s*\|.*/ }
+        if (ruleCount == 0) {
+            throw new GradleException("The scan rule docs at ${url} do not contain any rules.")
         }
-        logger.warn("Bundling the committed scan rule docs snapshot at ${ruleDocsSnapshot}.")
-        target.bytes = ruleDocsSnapshot.bytes
+        snapshot.setText(docs, 'UTF-8')
+        logger.lifecycle("Updated ${snapshot} with ${ruleCount} rules. Review the diff before committing.")
     }
 }
 
