@@ -68,49 +68,59 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 17
 }
 
-def ruleDocsUrl = 'https://raw.githubusercontent.com/ballerina-platform/ballerina-dev-website/master/' +
+def ruleDocsCommit = 'c079f6eabbd7d6d733a306a003768e9f843e1389'
+def ruleDocsUrl = "https://raw.githubusercontent.com/ballerina-platform/ballerina-dev-website/${ruleDocsCommit}/" +
         'swan-lake/development-tutorials/static-code-analysis/scan-rules.md'
+def ruleDocsPageUrl = 'https://ballerina.io/learn/scan-rules/'
 def ruleDocsSnapshot = file('src/main/rule-docs/scan-rules.md')
 def generatedRuleDocsDir = layout.buildDirectory.dir('generated/rule-docs')
 
-// Bundles the committed snapshot, so that builds are reproducible and only reviewed docs are bundled.
-// The URL is bundled too, so that the plugin fetches the latest docs at runtime from the same source.
 tasks.register('prepareRuleDocs') {
-    description = 'Bundles the committed scan rule docs snapshot and the URL to fetch the latest docs from.'
+    description = 'Bundles the committed scan rule docs snapshot and the URLs of the docs.'
     def snapshot = ruleDocsSnapshot
     def url = ruleDocsUrl
+    def pageUrl = ruleDocsPageUrl
     def outputDir = generatedRuleDocsDir
     inputs.file(snapshot)
     inputs.property('ruleDocsUrl', url)
+    inputs.property('ruleDocsPageUrl', pageUrl)
     outputs.dir(outputDir)
+    mustRunAfter 'updateRuleDocsSnapshot'
 
     doLast {
         def targetDir = outputDir.get().dir('rule-docs').asFile
         targetDir.mkdirs()
         new File(targetDir, 'scan-rules.md').bytes = snapshot.bytes
-        new File(targetDir, 'source.properties').setText("url=${url}\n", 'ISO-8859-1')
+        new File(targetDir, 'source.properties').setText("url=${url}\npageUrl=${pageUrl}\n", 'ISO-8859-1')
     }
 }
 
-// Run with `./gradlew updateRuleDocsSnapshot` and commit the result to update the bundled docs.
 tasks.register('updateRuleDocsSnapshot') {
-    description = 'Updates the committed scan rule docs snapshot from the Ballerina website.'
+    description = 'Updates the committed scan rule docs snapshot from the pinned commit of the Ballerina website.'
     def snapshot = ruleDocsSnapshot
     def url = ruleDocsUrl
     outputs.upToDateWhen { false }
+    finalizedBy 'verifyRuleDocsSnapshot'
 
     doLast {
         def connection = new URL(url).openConnection()
         connection.connectTimeout = 10_000
         connection.readTimeout = 30_000
         def docs = connection.inputStream.withCloseable { it.getText('UTF-8') }
-        def ruleCount = docs.readLines().count { it ==~ /^\|\s*\*\*Rule ID\*\*\s*\|.*/ }
-        if (ruleCount == 0) {
-            throw new GradleException("The scan rule docs at ${url} do not contain any rules.")
-        }
         snapshot.setText(docs, 'UTF-8')
-        logger.lifecycle("Updated ${snapshot} with ${ruleCount} rules. Review the diff before committing.")
+        logger.lifecycle("Updated ${snapshot}. Review the diff before committing.")
     }
+}
+
+tasks.register('verifyRuleDocsSnapshot', Test) {
+    description = 'Verifies that the plugin parses every scan tool rule from the bundled scan rule docs.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useTestNG()
+    filter {
+        includeTestsMatching 'io.ballerina.sonar.internal.RuleDocParserTest.testBundledRuleDocs'
+    }
+    outputs.upToDateWhen { false }
 }
 
 sourceSets.main.resources.srcDir(tasks.named('prepareRuleDocs'))

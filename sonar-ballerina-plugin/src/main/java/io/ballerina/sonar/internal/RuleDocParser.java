@@ -28,16 +28,15 @@ import java.util.regex.Pattern;
  * <p>
  * The page groups rules under level-2 headings (e.g. "Language rules", "Library rules"). Each rule starts with a
  * level-3 heading followed by a property table containing a {@code **Rule ID**} row, which is used to identify the
- * rule. Deeper headings within a rule are promoted by two levels.
+ * rule, and ends at the next heading of level 1 to 3. Deeper headings within a rule are promoted by two levels.
  *
  * @since 0.2.0
  */
 final class RuleDocParser {
     private static final Pattern RULE_ID_ROW = Pattern.compile("^\\|\\s*\\*\\*Rule ID\\*\\*\\s*\\|\\s*([^|]+?)\\s*\\|");
-    private static final Pattern SUB_HEADING = Pattern.compile("^#{4,6} ");
+    private static final Pattern HEADING = Pattern.compile("^ {0,3}(#{1,6})(?:[ \\t]|$)");
     private static final Pattern CODE_FENCE = Pattern.compile("^ {0,3}(`{3,}|~{3,})(.*)$");
-    private static final String SECTION_HEADING_PREFIX = "## ";
-    private static final String RULE_HEADING_PREFIX = "### ";
+    private static final int RULE_HEADING_LEVEL = 3;
 
     private final Map<String, String> ruleDocsInMd = new HashMap<>();
     private StringBuilder currentRule = null;
@@ -53,19 +52,19 @@ final class RuleDocParser {
         for (String line : markdown.split("\\R", -1)) {
             Matcher fenceMatcher = CODE_FENCE.matcher(line);
             boolean isFence = fenceMatcher.matches();
-            if (openFence == null && !isFence) {
-                if (line.startsWith(SECTION_HEADING_PREFIX)) {
+            Matcher headingMatcher = HEADING.matcher(line);
+            if (openFence == null && !isFence && headingMatcher.find()) {
+                int level = headingMatcher.group(1).length();
+                if (level < RULE_HEADING_LEVEL) {
                     parser.endRule();
                     continue;
                 }
-                if (line.startsWith(RULE_HEADING_PREFIX)) {
+                if (level == RULE_HEADING_LEVEL) {
                     parser.endRule();
                     parser.currentRule = new StringBuilder();
                     continue;
                 }
-                if (SUB_HEADING.matcher(line).find()) {
-                    line = line.substring(2);
-                }
+                line = line.replaceFirst("##", "");
             }
             if (isFence) {
                 String fence = fenceMatcher.group(1);

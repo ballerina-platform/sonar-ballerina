@@ -85,7 +85,7 @@ public class RuleDocRenderingTest {
         Assert.assertTrue(html.contains("<td>ballerina:1</td>"), html);
     }
 
-    @Test(description = "The rule docs URL is bundled from the build script")
+    @Test(description = "The rule docs URLs are bundled from the build script")
     void testRuleDocsSourceIsBundled() throws IOException {
         Properties source = new Properties();
         try (InputStream in = RuleDocRenderingTest.class.getResourceAsStream("/rule-docs/source.properties")) {
@@ -94,5 +94,6 @@ public class RuleDocRenderingTest {
         }
 
         Assert.assertTrue(source.getProperty("url", "").endsWith("/scan-rules.md"));
+        Assert.assertEquals(source.getProperty("pageUrl"), "https://ballerina.io/learn/scan-rules/");
     }
 }

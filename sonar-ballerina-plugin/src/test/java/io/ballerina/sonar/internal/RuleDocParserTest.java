@@ -79,6 +79,27 @@ public class RuleDocParserTest {
         Assert.assertEquals(docs.keySet(), Set.of("ballerina:1"));
     }
 
+    @Test(description = "Indented and level-1 headings are rule boundaries, and indented sub-headings are promoted")
+    void testHeadingVariants() {
+        String markdown = rule("First", "ballerina:1", "  #### Indented sub-heading\n\nBody one.") +
+                "  ### Indented rule\n\n" +
+                "| Property    | Description |\n" +
+                "|-------------|-------------|\n" +
+                "| **Rule ID** | ballerina:2 |\n\n" +
+                "Body two.\n\n" +
+                "# Appendix\n\nNot part of a rule.\n\n" +
+                "###\tTab-separated rule\n\n| **Rule ID** | ballerina:3 |\n\n" +
+                "####### Not a heading\n";
+
+        Map<String, String> docs = RuleDocParser.parse(markdown);
+
+        Assert.assertEquals(docs.keySet(), Set.of("ballerina:1", "ballerina:2", "ballerina:3"));
+        Assert.assertTrue(docs.get("ballerina:1").contains("\n  ## Indented sub-heading\n"));
+        Assert.assertTrue(docs.get("ballerina:1").endsWith("Body one."));
+        Assert.assertTrue(docs.get("ballerina:2").endsWith("Body two."));
+        Assert.assertTrue(docs.get("ballerina:3").endsWith("####### Not a heading"));
+    }
+
     @Test(description = "Headings inside backtick and tilde code blocks are kept as they are")
     void testHeadingsInCodeBlocks() {
         String body = "```md\n## Not a section\n### Not a rule\n#### Not promoted\n```\n\n" +
