@@ -25,6 +25,8 @@ under the License.
     <test name="sonar-ballerina-test-suite">
         <classes>
             <class name="io.ballerina.sonar.BallerinaSensorTest"/>
+            <class name="io.ballerina.sonar.internal.RuleDocParserTest"/>
+            <class name="io.ballerina.sonar.internal.RuleDocRenderingTest"/>
         </classes>
     </test>
 </suite>
