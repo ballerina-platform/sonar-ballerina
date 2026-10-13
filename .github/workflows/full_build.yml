@@ -26,10 +26,10 @@ jobs:
       - name: Set Up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.5
         with:
-          version: 2201.12.3
+          version: 2201.13.2
 
       - name: Install scan tool
-        run: bal tool pull scan
+        run: bal tool pull scan:0.12.0
 
       - name: Build with Gradle
         env:
@@ -63,10 +63,10 @@ jobs:
       - name: Set Up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.5
         with:
-          version: 2201.12.3
+          version: 2201.13.2
 
       - name: Install scan tool
-        run: bal tool pull scan
+        run: bal tool pull scan:0.12.0
 
       - name: Build with Gradle
         env:
