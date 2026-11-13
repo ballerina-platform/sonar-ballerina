@@ -24,7 +24,9 @@ import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -120,6 +122,67 @@ public class SonarPlatformPluginTest {
 
         Assert.assertFalse(Files.exists(workspace.argumentsFile()));
         Assert.assertTrue(Files.exists(workspace.projectDir().resolve(Constants.ISSUES_FILE_PATH)));
+    }
+
+    @Test
+    public void testOnScanWritesScannerOutputToStandardError() throws IOException {
+        Workspace workspace = workspace();
+        SonarPlatformPlugin plugin = workspace.plugin(0);
+        plugin.init(context(false, Map.of()));
+        CapturedStreams streams = capture(() -> plugin.onScan(List.of()));
+
+        Assert.assertEquals(streams.out(), "");
+        Assert.assertEquals(streams.err(), String.join(System.lineSeparator(),
+                "scanner stdout", "scanner stderr", "Reporting successful!", ""));
+    }
+
+    @Test
+    public void testOnScanReportsFailedScanner() throws IOException {
+        Workspace workspace = workspace();
+        SonarPlatformPlugin plugin = workspace.plugin(3);
+        plugin.init(context(false, Map.of()));
+        CapturedStreams streams = capture(() -> plugin.onScan(List.of()));
+
+        Assert.assertEquals(streams.out(), "");
+        Assert.assertEquals(streams.err(), String.join(System.lineSeparator(),
+                "scanner stdout", "scanner stderr", "Reporting failed!", ""));
+    }
+
+    @Test
+    public void testOnScanFailsWithoutScanner() throws IOException {
+        Workspace workspace = workspace();
+        SonarPlatformPlugin plugin = new SonarPlatformPlugin(workspace.root().resolve("missing").toString(), false,
+                workspace.projectDir());
+        plugin.init(context(false, Map.of()));
+
+        RuntimeException exception = Assert.expectThrows(RuntimeException.class, () -> plugin.onScan(List.of()));
+        Assert.assertTrue(exception.getMessage().startsWith("Unable to run " + workspace.root().resolve("missing")
+                + ", which must be on the PATH: "), exception.getMessage());
+    }
+
+    private static CapturedStreams capture(Runnable runnable) {
+        PrintStream systemOut = System.out;
+        PrintStream systemErr = System.err;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
+            System.setErr(new PrintStream(err, true, StandardCharsets.UTF_8));
+            runnable.run();
+        } finally {
+            System.setOut(systemOut);
+            System.setErr(systemErr);
+        }
+        return new CapturedStreams(out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * The text written to the standard output and standard error streams.
+     *
+     * @param out the text written to standard output
+     * @param err the text written to standard error
+     */
+    private record CapturedStreams(String out, String err) {
     }
 
     private Workspace workspace() throws IOException {

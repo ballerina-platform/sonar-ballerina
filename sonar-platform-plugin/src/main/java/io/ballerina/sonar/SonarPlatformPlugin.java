@@ -29,6 +29,7 @@ import org.apache.commons.lang3.SystemUtils;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -62,7 +63,6 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     private final boolean windows;
     private final Path projectDir;
     private PlatformPluginContext platformPluginContext;
-    private final PrintStream outputStream = System.out;
 
     public SonarPlatformPlugin() {
         this(SCANNER, SystemUtils.IS_OS_WINDOWS, Path.of(System.getProperty("user.dir")));
@@ -99,18 +99,36 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
             scannerArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
         }
 
-        ProcessBuilder processBuilder = new ProcessBuilder(command(windows, scanner, scannerArguments));
-        processBuilder.directory(projectDir.toFile());
-        processBuilder.inheritIO();
+        ProcessBuilder processBuilder = new ProcessBuilder(command(windows, scanner, scannerArguments))
+                .directory(projectDir.toFile())
+                .redirectErrorStream(true)
+                .redirectInput(ProcessBuilder.Redirect.INHERIT);
+        runScanner(processBuilder, System.err);
+    }
+
+    /**
+     * Runs the scanner and copies its output to the given stream. Standard output of {@code bal scan} holds only
+     * the scan results, so the scanner must not write to it.
+     */
+    private void runScanner(ProcessBuilder processBuilder, PrintStream log) {
+        Process process;
         try {
-            Process process = processBuilder.start();
+            process = processBuilder.start();
+        } catch (IOException ex) {
+            throw new RuntimeException("Unable to run " + scanner + ", which must be on the PATH: " + ex.getMessage(),
+                    ex);
+        }
+        try (InputStream scannerOutput = process.getInputStream()) {
+            scannerOutput.transferTo(log);
+            log.flush();
             int exitCode = process.waitFor();
-            if (exitCode == 0) {
-                outputStream.println("Reporting successful!");
-            } else {
-                outputStream.println("Reporting failed!");
-            }
-        } catch (IOException | InterruptedException ex) {
+            log.println(exitCode == 0 ? "Reporting successful!" : "Reporting failed!");
+        } catch (IOException ex) {
+            process.destroy();
+            throw new RuntimeException(ex);
+        } catch (InterruptedException ex) {
+            process.destroy();
+            Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
     }
