@@ -27,7 +27,6 @@ import io.ballerina.scan.StaticCodeAnalysisPlatformPlugin;
 import io.ballerina.scan.internal.IssueImpl;
 import org.apache.commons.lang3.SystemUtils;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -55,10 +54,25 @@ import static io.ballerina.sonar.Constants.START_LINE_OFFSET;
  * @since 0.1.0
  */
 public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
+    private static final String SCANNER = "sonar-scanner";
+    private static final String EXCLUSIONS = String.join(",", "**/*.java", "**/*.xml", "**/*.yaml", "**/*.go",
+            "**/*.kt", "**/*.js", "**/*.html", "**/*.YAML", "**/*.rb", "**/*.scala", "**/*.py");
+
+    private final String scanner;
+    private final boolean windows;
+    private final Path projectDir;
     private PlatformPluginContext platformPluginContext;
-    private final List<String> processBuilderArguments = new ArrayList<>();
-    private final ProcessBuilder processBuilder = new ProcessBuilder();
     private final PrintStream outputStream = System.out;
+
+    public SonarPlatformPlugin() {
+        this(SCANNER, SystemUtils.IS_OS_WINDOWS, Path.of(System.getProperty("user.dir")));
+    }
+
+    SonarPlatformPlugin(String scanner, boolean windows, Path projectDir) {
+        this.scanner = scanner;
+        this.windows = windows;
+        this.projectDir = projectDir;
+    }
 
     @Override
     public String platform() {
@@ -68,44 +82,25 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     @Override
     public void init(PlatformPluginContext platformPluginContext) {
         this.platformPluginContext = platformPluginContext;
-        if (SystemUtils.IS_OS_WINDOWS) {
-            processBuilderArguments.add("cmd");
-            processBuilderArguments.add("/c");
-        } else {
-            processBuilderArguments.add("sh");
-            processBuilderArguments.add("-c");
-        }
-        processBuilderArguments.add("sonar-scanner");
-        processBuilderArguments.add("-Dsonar.exclusions=" +
-                "'" +
-                "**/*.java," +
-                "**/*.xml," +
-                "**/*.yaml," +
-                "**/*.go," +
-                "**/*.kt," +
-                "**/*.js," +
-                "**/*.html," +
-                "**/*.YAML" +
-                ",**/*.rb," +
-                "**/*.scala," +
-                "**/*.py" +
-                "'");
     }
 
     @Override
     public void onScan(List<Issue> issues) {
-        saveIssues(issues);
+        Path issuesFile = saveIssues(issues);
         if (platformPluginContext.initiatedByPlatform()) {
             return;
         }
 
-        processBuilderArguments.add("-DanalyzedResultsPath=" + Path.of(ISSUES_FILE_PATH).toAbsolutePath());
+        List<String> scannerArguments = new ArrayList<>();
+        scannerArguments.add("-Dsonar.exclusions=" + EXCLUSIONS);
+        scannerArguments.add("-DanalyzedResultsPath=" + issuesFile);
         String sonarProjectPropertiesPath = platformPluginContext.platformArgs().get("sonarProjectPropertiesPath");
         if (sonarProjectPropertiesPath != null) {
-            processBuilderArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
+            scannerArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
         }
 
-        processBuilder.command(processBuilderArguments);
+        ProcessBuilder processBuilder = new ProcessBuilder(command(windows, scanner, scannerArguments));
+        processBuilder.directory(projectDir.toFile());
         processBuilder.inheritIO();
         try {
             Process process = processBuilder.start();
@@ -120,7 +115,51 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
         }
     }
 
-    private void saveIssues(List<Issue> issues) {
+    /**
+     * Builds the command that runs the scanner with the given arguments, without a shell on Unix, so that each
+     * argument reaches the scanner as is.
+     *
+     * <p>On Windows, the scanner is a batch file, which only {@code cmd} can run, and {@code cmd} finds it on the
+     * {@code PATH} through {@code PATHEXT}. {@code cmd /s /c} runs the text inside the outer quotes as one command
+     * line, so each argument is quoted to keep spaces and the characters {@code cmd} treats specially.
+     *
+     * @param windows   whether the command runs on Windows
+     * @param scanner   the scanner executable
+     * @param arguments the arguments of the scanner
+     * @return the command
+     */
+    static List<String> command(boolean windows, String scanner, List<String> arguments) {
+        List<String> command = new ArrayList<>();
+        if (!windows) {
+            command.add(scanner);
+            command.addAll(arguments);
+            return command;
+        }
+        StringBuilder commandLine = new StringBuilder("\"").append(quoteForCmd(scanner));
+        arguments.forEach(argument -> commandLine.append(' ').append(quoteForCmd(argument)));
+        commandLine.append('"');
+        command.add("cmd.exe");
+        command.add("/d");
+        command.add("/s");
+        command.add("/c");
+        command.add(commandLine.toString());
+        return command;
+    }
+
+    private static String quoteForCmd(String argument) {
+        if (argument.indexOf('"') >= 0) {
+            throw new IllegalArgumentException("Unable to pass an argument with a double quote to the scanner: "
+                    + argument);
+        }
+        // A backslash before the closing quote would escape it, so trailing backslashes are doubled
+        int end = argument.length();
+        while (end > 0 && argument.charAt(end - 1) == '\\') {
+            end--;
+        }
+        return "\"" + argument + argument.substring(end) + "\"";
+    }
+
+    private Path saveIssues(List<Issue> issues) {
         JsonArray issuesAsJson = new JsonArray();
         issues.forEach(issue -> {
             IssueImpl reportedIssue = (IssueImpl) issue;
@@ -140,11 +179,12 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String jsonOutput = gson.toJson(issuesAsJson);
-        File destination = Path.of(System.getProperty("user.dir")).resolve(ISSUES_FILE_PATH).toFile();
-        try (FileWriter writer = new FileWriter(destination, StandardCharsets.UTF_8)) {
+        Path destination = projectDir.resolve(ISSUES_FILE_PATH).toAbsolutePath();
+        try (FileWriter writer = new FileWriter(destination.toFile(), StandardCharsets.UTF_8)) {
             writer.write(jsonOutput);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
+        return destination;
     }
 }
