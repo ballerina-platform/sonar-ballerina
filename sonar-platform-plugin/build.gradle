@@ -53,6 +53,8 @@ dependencies {
     implementation group: 'org.ballerinalang', name: 'ballerina-tools-api', version: "${ballerinaLangVersion}"
     implementation group: 'io.ballerina.scan', name: 'scan-command', version: "${scanToolVersion}"
 
+    testImplementation group: 'org.testng', name: 'testng', version: "${testngVersion}"
+
     checkstyle group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.12.1'
 }
 
@@ -64,6 +66,10 @@ java {
 
 tasks.withType(JavaCompile).configureEach {
     options.release = 21
+}
+
+tasks.test {
+    useTestNG()
 }
 
 tasks.withType(JavaExec).configureEach {
