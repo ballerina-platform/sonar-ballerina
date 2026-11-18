@@ -17,16 +17,15 @@
 
 package io.ballerina.sonar;
 
+import com.sonarsource.scanner.engine.sensor.test.fixtures.SensorContextTester;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.TextRange;
 import org.sonar.api.batch.rule.Severity;
-import org.sonar.api.batch.sensor.internal.SensorContextTester;
 import org.sonar.api.batch.sensor.issue.ExternalIssue;
 import org.sonar.api.batch.sensor.issue.Issue;
 import org.sonar.api.batch.sensor.issue.IssueLocation;
 import org.sonar.api.batch.sensor.rule.AdHocRule;
-import org.sonar.api.config.internal.MapSettings;
-import org.sonar.api.config.internal.Settings;
+import org.sonar.api.issue.impact.SoftwareQuality;
 import org.sonar.api.rules.RuleType;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -37,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 
@@ -64,8 +64,7 @@ public class BallerinaSensorTest extends AbstractSensorTest {
                 StandardCharsets.UTF_8);
 
         // Append mock settings file
-        Settings settings = context.settings().appendProperty("analyzedResultsPath", filePath.toString());
-        context.setSettings((MapSettings) settings);
+        context.settings().setProperty("analyzedResultsPath", filePath.toString());
 
         // Add mock input files
         InputFile ballerinaFile = createInputFileFromPath(projectDir, "main.bal");
@@ -90,6 +89,8 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         AdHocRule adHocRule = adHocRules.get(0);
         Assert.assertEquals(adHocRule.severity(), Severity.MAJOR);
         Assert.assertEquals(adHocRule.type(), RuleType.CODE_SMELL);
+        Assert.assertEquals(adHocRule.defaultImpacts(), Map.of(SoftwareQuality.MAINTAINABILITY,
+                org.sonar.api.issue.impact.Severity.MEDIUM));
         Assert.assertEquals(adHocRule.name(), "exampleOrg-example_module_static_code_analyzer-1");
         Assert.assertEquals(adHocRule.description(), "rule 1");
         Assert.assertEquals(adHocRule.engineId(), "ballerina_external_analyzer");
@@ -99,6 +100,8 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         ExternalIssue externalIssue = externalIssues.get(0);
         Assert.assertEquals(externalIssue.severity(), Severity.MAJOR);
         Assert.assertEquals(externalIssue.type(), RuleType.CODE_SMELL);
+        Assert.assertEquals(externalIssue.impacts(), Map.of(SoftwareQuality.MAINTAINABILITY,
+                org.sonar.api.issue.impact.Severity.MEDIUM));
         Assert.assertEquals(externalIssue.engineId(), "ballerina_external_analyzer");
         Assert.assertEquals(externalIssue.ruleId(), "exampleOrg-example_module_static_code_analyzer-1");
         IssueLocation issueLocation = externalIssue.primaryLocation();

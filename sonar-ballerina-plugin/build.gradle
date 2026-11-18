@@ -46,7 +46,6 @@ repositories {
 dependencies {
     compileOnly group: 'org.sonarsource.api.plugin', name: 'sonar-plugin-api', version: "${sonarPluginAPIVersion}"
 
-    implementation group: 'org.sonarsource.analyzer-commons', name: 'sonar-analyzer-commons', version: "${sonarAnalyzerCommonsVersion}"
     implementation "com.google.code.gson:gson:${gsonVersion}"
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsVersion}"
     implementation group: 'org.commonmark', name: 'commonmark', version: "${commonMarkVersion}"
@@ -56,74 +55,72 @@ dependencies {
 
     testImplementation group: 'org.testng', name: 'testng', version: "${testngVersion}"
     testImplementation group: 'org.sonarsource.sonarqube', name: 'sonar-plugin-api-impl', version: "${sonarQubeVersion}"
+    testImplementation group: 'org.sonarsource.scanner.engine', name: 'sensor-test-fixtures', version: "${sonarSensorTestFixturesVersion}"
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.release = 17
-}
+def ruleInfoUrl = 'https://raw.githubusercontent.com/CharanaManawathilake/static-code-analysis-tool/' +
+        'rule-info-descriptions/scan-command/tool-scan/resources/rule-info.json'
+def ruleInfoFallbackUrl = 'https://raw.githubusercontent.com/ballerina-platform/static-code-analysis-tool/main/' +
+        'scan-command/tool-scan/resources/rule-info.json'
+def ruleInfoSnapshot = file('src/main/rule-info/rule-info.json')
+def generatedRuleInfoDir = layout.buildDirectory.dir('generated/rule-info')
 
-def ruleDocsCommit = 'c079f6eabbd7d6d733a306a003768e9f843e1389'
-def ruleDocsUrl = "https://raw.githubusercontent.com/ballerina-platform/ballerina-dev-website/${ruleDocsCommit}/" +
-        'swan-lake/development-tutorials/static-code-analysis/scan-rules.md'
-def ruleDocsPageUrl = 'https://ballerina.io/learn/scan-rules/'
-def ruleDocsSnapshot = file('src/main/rule-docs/scan-rules.md')
-def generatedRuleDocsDir = layout.buildDirectory.dir('generated/rule-docs')
-
-tasks.register('prepareRuleDocs') {
-    description = 'Bundles the committed scan rule docs snapshot and the URLs of the docs.'
-    def snapshot = ruleDocsSnapshot
-    def url = ruleDocsUrl
-    def pageUrl = ruleDocsPageUrl
-    def outputDir = generatedRuleDocsDir
+tasks.register('prepareRuleInfo') {
+    description = 'Bundles the committed rule-info.json snapshot and the URLs the plugin fetches it from.'
+    def snapshot = ruleInfoSnapshot
+    def url = ruleInfoUrl
+    def fallbackUrl = ruleInfoFallbackUrl
+    def outputDir = generatedRuleInfoDir
     inputs.file(snapshot)
-    inputs.property('ruleDocsUrl', url)
-    inputs.property('ruleDocsPageUrl', pageUrl)
+    inputs.property('ruleInfoUrl', url)
+    inputs.property('ruleInfoFallbackUrl', fallbackUrl)
     outputs.dir(outputDir)
-    mustRunAfter 'updateRuleDocsSnapshot'
+    mustRunAfter 'updateRuleInfoSnapshot'
 
     doLast {
-        def targetDir = outputDir.get().dir('rule-docs').asFile
+        def targetDir = outputDir.get().dir('rule-info').asFile
         targetDir.mkdirs()
-        new File(targetDir, 'scan-rules.md').bytes = snapshot.bytes
-        new File(targetDir, 'source.properties').setText("url=${url}\npageUrl=${pageUrl}\n", 'ISO-8859-1')
+        new File(targetDir, 'rule-info.json').bytes = snapshot.bytes
+        new File(targetDir, 'source.properties').setText("url=${url}\nfallbackUrl=${fallbackUrl}\n",
+                'ISO-8859-1')
     }
 }
 
-tasks.register('updateRuleDocsSnapshot') {
-    description = 'Updates the committed scan rule docs snapshot from the pinned commit of the Ballerina website.'
-    def snapshot = ruleDocsSnapshot
-    def url = ruleDocsUrl
+tasks.register('updateRuleInfoSnapshot') {
+    description = 'Updates the committed rule-info.json snapshot from the scan tool repository.'
+    def snapshot = ruleInfoSnapshot
+    def url = ruleInfoUrl
     outputs.upToDateWhen { false }
-    finalizedBy 'verifyRuleDocsSnapshot'
+    finalizedBy 'verifyRuleInfoSnapshot'
 
     doLast {
         def connection = new URL(url).openConnection()
         connection.connectTimeout = 10_000
         connection.readTimeout = 30_000
-        def docs = connection.inputStream.withCloseable { it.getText('UTF-8') }
-        snapshot.setText(docs, 'UTF-8')
+        def ruleInfo = connection.inputStream.withCloseable { it.getText('UTF-8') }
+        snapshot.setText(ruleInfo, 'UTF-8')
         logger.lifecycle("Updated ${snapshot}. Review the diff before committing.")
     }
 }
 
-tasks.register('verifyRuleDocsSnapshot', Test) {
-    description = 'Verifies that the plugin parses every scan tool rule from the bundled scan rule docs.'
+tasks.register('verifyRuleInfoSnapshot', Test) {
+    description = 'Verifies that the plugin parses every rule in the bundled rule-info.json snapshot.'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useTestNG()
     filter {
-        includeTestsMatching 'io.ballerina.sonar.internal.RuleDocParserTest.testBundledRuleDocs'
+        includeTestsMatching 'io.ballerina.sonar.internal.RuleInfoParserTest.testBundledRuleInfo'
     }
     outputs.upToDateWhen { false }
 }
 
-sourceSets.main.resources.srcDir(tasks.named('prepareRuleDocs'))
+sourceSets.main.resources.srcDir(tasks.named('prepareRuleInfo'))
 
 // Setting up checkstyle
 task downloadCheckstyleRuleFiles(type: Download) {
@@ -255,7 +252,7 @@ tasks.jar {
                 'Plugin-SourcesUrl': 'https://ballerina.io/',
                 'Plugin-Version': project.version,
                 'Plugin-RequiredForLanguages': 'ballerina',
-                'Sonar-Version': '6.7',
+                'Sonar-Version': sonarPluginAPIVersion.tokenize('.').take(2).join('.'),
                 'Version': "${project.version}",
                 'Jre-Min-Version': '17'
         )

@@ -19,7 +19,10 @@ package io.ballerina.sonar;
 
 import io.ballerina.sonar.internal.RuleGenerator;
 import io.ballerina.sonar.internal.RuleMetadata;
-import org.sonar.api.rules.RuleType;
+import io.ballerina.sonar.internal.RuleMetadata.Remediation;
+import io.ballerina.sonar.internal.RuleMetadata.RuleDescription;
+import org.sonar.api.config.Configuration;
+import org.sonar.api.server.rule.RuleDescriptionSectionBuilder;
 import org.sonar.api.server.rule.RulesDefinition;
 
 import java.util.List;
@@ -27,32 +30,80 @@ import java.util.List;
 import static io.ballerina.sonar.Constants.LANGUAGE_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
 import static io.ballerina.sonar.Constants.RULE_REPOSITORY_NAME;
+import static org.sonar.api.server.rule.RuleDescriptionSection.RuleDescriptionSectionKeys.HOW_TO_FIX_SECTION_KEY;
+import static org.sonar.api.server.rule.RuleDescriptionSection.RuleDescriptionSectionKeys.RESOURCES_SECTION_KEY;
+import static org.sonar.api.server.rule.RuleDescriptionSection.RuleDescriptionSectionKeys.ROOT_CAUSE_SECTION_KEY;
 
-/**
- * Represents the implementation of the {@link RulesDefinition} class for Ballerina.
- *
- * @since 0.1.0
- */
 public class BallerinaRulesDefinition implements RulesDefinition {
+
+    private final Configuration configuration;
+
+    public BallerinaRulesDefinition(Configuration configuration) {
+        this.configuration = configuration;
+    }
 
     @Override
     public void define(Context context) {
         NewRepository repository = context.createRepository(RULE_REPOSITORY_KEY, LANGUAGE_KEY);
         repository.setName(RULE_REPOSITORY_NAME);
-        RuleGenerator ruleMetadataGenerator = RuleGenerator.getInstance();
+        List<RuleMetadata> rules;
         try {
-            List<RuleMetadata> ruleDocs = ruleMetadataGenerator.loadRules();
-            for (RuleMetadata ruleDoc : ruleDocs) {
-                repository.createRule(ruleDoc.id())
-                        .setName(ruleDoc.name())
-                        .setType(RuleType.valueOf(ruleDoc.type()))
-                        .setHtmlDescription(ruleDoc.description())
-                        .setSeverity(ruleDoc.severity())
-                        .addTags(ruleDoc.tags());
-            }
+            rules = RuleGenerator.getInstance().loadRules(configuration);
         } catch (SonarBallerinaException e) {
-            throw new RuntimeException("Error generating rules for Ballerina", e);
+            throw new IllegalStateException("Error generating rules for Ballerina", e);
+        }
+        for (RuleMetadata rule : rules) {
+            defineRule(repository, rule);
         }
         repository.done();
+    }
+
+    static void defineRule(NewRepository repository, RuleMetadata rule) {
+        NewRule newRule = repository.createRule(rule.id())
+                .setName(rule.name())
+                .setType(rule.type())
+                .setStatus(rule.status())
+                .setSeverity(rule.severity())
+                .setScope(rule.scope())
+                .addTags(rule.tags().toArray(String[]::new));
+        rule.impacts().forEach(newRule::addDefaultImpact);
+        if (rule.cleanCodeAttribute() != null) {
+            newRule.setCleanCodeAttribute(rule.cleanCodeAttribute());
+        }
+        Remediation remediation = rule.remediation();
+        if (remediation != null) {
+            DebtRemediationFunctions functions = newRule.debtRemediationFunctions();
+            newRule.setDebtRemediationFunction(switch (remediation.type()) {
+                case CONSTANT_ISSUE -> functions.constantPerIssue(remediation.baseEffort());
+                case LINEAR -> functions.linear(remediation.gapMultiplier());
+                case LINEAR_OFFSET -> functions.linearWithOffset(remediation.gapMultiplier(),
+                        remediation.baseEffort());
+            });
+            if (remediation.gapDescription() != null) {
+                newRule.setGapDescription(remediation.gapDescription());
+            }
+        }
+        if (!rule.cwe().isEmpty()) {
+            newRule.addCwe(rule.cwe().stream().mapToInt(Integer::intValue).toArray());
+        }
+        if (!rule.owaspTop10Y2025().isEmpty()) {
+            newRule.addOwaspTop10(OwaspTop10Version.Y2025, rule.owaspTop10Y2025().toArray(OwaspTop10[]::new));
+        }
+
+        RuleDescription description = rule.description();
+        // SonarQube still requires the legacy description, though it shows the sections when a rule has them
+        newRule.setHtmlDescription(description.toHtml());
+        addDescriptionSection(newRule, ROOT_CAUSE_SECTION_KEY, description.rootCause());
+        addDescriptionSection(newRule, HOW_TO_FIX_SECTION_KEY, description.howToFix());
+        addDescriptionSection(newRule, RESOURCES_SECTION_KEY, description.resources());
+    }
+
+    private static void addDescriptionSection(NewRule rule, String sectionKey, String html) {
+        if (html != null) {
+            rule.addDescriptionSection(new RuleDescriptionSectionBuilder()
+                    .sectionKey(sectionKey)
+                    .htmlContent(html)
+                    .build());
+        }
     }
 }
