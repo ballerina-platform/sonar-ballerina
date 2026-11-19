@@ -127,7 +127,7 @@ public class RuleInfoParserTest {
                 """).get(0);
         Assert.assertEquals(rule.type(), RuleType.CODE_SMELL);
         Assert.assertEquals(rule.severity(), "MAJOR");
-        Assert.assertEquals(rule.scope(), RuleScope.MAIN);
+        Assert.assertEquals(rule.scope(), RuleScope.ALL);
         Assert.assertNull(rule.cleanCodeAttribute());
         Assert.assertNull(rule.remediation());
         Assert.assertEquals(rule.status(), RuleStatus.READY);

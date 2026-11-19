@@ -38,6 +38,9 @@ once per server start, so restart the server to pick up changes to `rule-info.js
 To refresh the bundled snapshot from `ruleInfoUrl`, run `./gradlew :sonar-ballerina-plugin:updateRuleInfoSnapshot`, and
 review the diff before committing it.
 
+See [Writing rule-info.json entries](sonar-ballerina-plugin/src/main/rule-info/README.md) for how to decide the
+value of each field, and how to derive it from the `rules.json` file of each analyzer.
+
 ## Contribute to Ballerina
 
 As an open-source project, Ballerina welcomes contributions from the community.

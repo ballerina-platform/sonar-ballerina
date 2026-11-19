@@ -229,7 +229,7 @@ public final class RuleInfoParser {
 
     private static RuleScope parseScope(String scope, String key) {
         if (isBlank(scope)) {
-            return RuleScope.MAIN;
+            return RuleScope.ALL;
         }
         return switch (scope.strip().toUpperCase(Locale.ROOT)) {
             case "ALL" -> RuleScope.ALL;
@@ -237,7 +237,7 @@ public final class RuleInfoParser {
             case "TEST", "TESTS" -> RuleScope.TEST;
             default -> {
                 LOGGER.warn("Ignoring the invalid scope '{}' of the rule {}", scope, key);
-                yield RuleScope.MAIN;
+                yield RuleScope.ALL;
             }
         };
     }
