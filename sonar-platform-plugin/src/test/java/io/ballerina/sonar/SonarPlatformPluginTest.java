@@ -73,14 +73,21 @@ public class SonarPlatformPluginTest {
         List<String> command = SonarPlatformPlugin.command(true, "sonar-scanner",
                 List.of(EXCLUSIONS, "-DanalyzedResultsPath=C:\\a b\\results.json",
                         "-Dproject.settings=a&b.properties"));
-        Assert.assertEquals(command, List.of("cmd.exe", "/d", "/s", "/c", "\"\"sonar-scanner\" \"" + EXCLUSIONS
+        Assert.assertEquals(command, List.of("cmd.exe", "/d", "/s", "/c", "\"sonar-scanner \"" + EXCLUSIONS
                 + "\" \"-DanalyzedResultsPath=C:\\a b\\results.json\" \"-Dproject.settings=a&b.properties\"\""));
     }
 
     @Test
     public void testWindowsCommandDoublesTrailingBackslashes() {
         List<String> command = SonarPlatformPlugin.command(true, "sonar-scanner", List.of("-Dx=C:\\a b\\"));
-        Assert.assertEquals(command.get(4), "\"\"sonar-scanner\" \"-Dx=C:\\a b\\\\\"\"");
+        Assert.assertEquals(command.get(4), "\"sonar-scanner \"-Dx=C:\\a b\\\\\"\"");
+    }
+
+    @Test
+    public void testWindowsCommandQuotesScannerPathOnly() {
+        List<String> command = SonarPlatformPlugin.command(true, "C:\\Program Files\\scanner\\sonar-scanner.bat",
+                List.of("-Dx=1"));
+        Assert.assertEquals(command.get(4), "\"\"C:\\Program Files\\scanner\\sonar-scanner.bat\" \"-Dx=1\"\"");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

@@ -26,6 +26,7 @@ under the License.
         <classes>
             <class name="io.ballerina.sonar.BallerinaSensorTest"/>
             <class name="io.ballerina.sonar.BallerinaRulesDefinitionTest"/>
+            <class name="io.ballerina.sonar.BallerinaPluginTest"/>
             <class name="io.ballerina.sonar.internal.RuleInfoParserTest"/>
             <class name="io.ballerina.sonar.internal.RuleGeneratorTest"/>
             <class name="io.ballerina.sonar.internal.RuleDescriptionRendererTest"/>

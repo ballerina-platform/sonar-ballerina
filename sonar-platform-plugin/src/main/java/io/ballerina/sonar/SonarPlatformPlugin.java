@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static io.ballerina.sonar.Constants.END_LINE;
 import static io.ballerina.sonar.Constants.END_LINE_OFFSET;
@@ -56,6 +57,7 @@ import static io.ballerina.sonar.Constants.START_LINE_OFFSET;
  */
 public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     private static final String SCANNER = "sonar-scanner";
+    private static final Pattern PLAIN_COMMAND_NAME = Pattern.compile("[A-Za-z0-9._-]+");
     private static final String EXCLUSIONS = String.join(",", "**/*.java", "**/*.xml", "**/*.yaml", "**/*.go",
             "**/*.kt", "**/*.js", "**/*.html", "**/*.YAML", "**/*.rb", "**/*.scala", "**/*.py");
 
@@ -153,7 +155,8 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
             command.addAll(arguments);
             return command;
         }
-        StringBuilder commandLine = new StringBuilder("\"").append(quoteForCmd(scanner));
+        String scannerForCmd = PLAIN_COMMAND_NAME.matcher(scanner).matches() ? scanner : quoteForCmd(scanner);
+        StringBuilder commandLine = new StringBuilder("\"").append(scannerForCmd);
         arguments.forEach(argument -> commandLine.append(' ').append(quoteForCmd(argument)));
         commandLine.append('"');
         command.add("cmd.exe");

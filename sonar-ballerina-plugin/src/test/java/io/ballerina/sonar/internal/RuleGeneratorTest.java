@@ -41,6 +41,7 @@ public class RuleGeneratorTest {
     private static final String FALLBACK_RULE_INFO = "[{\"title\": \"Fallback\", \"sqKey\": \"ballerina:1\"}]";
 
     private HttpServer server;
+    private Path cacheDir;
     private Path cachePath;
 
     @BeforeMethod
@@ -51,14 +52,15 @@ public class RuleGeneratorTest {
         serve("/missing", 404, "Not Found");
         serve("/invalid", 200, "<html></html>");
         server.start();
-        cachePath = Files.createTempDirectory("sonar-ballerina").resolve("rule-info.json");
+        cacheDir = Files.createTempDirectory("sonar-ballerina");
+        cachePath = cacheDir.resolve("rule-info.json");
     }
 
     @AfterMethod
     void tearDown() throws IOException {
         server.stop(0);
         Files.deleteIfExists(cachePath);
-        Files.deleteIfExists(cachePath.getParent());
+        Files.deleteIfExists(cacheDir);
     }
 
     @Test(description = "The rules are loaded from the first URL when it is available")

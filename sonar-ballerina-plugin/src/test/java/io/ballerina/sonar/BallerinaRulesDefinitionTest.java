@@ -63,7 +63,7 @@ public class BallerinaRulesDefinitionTest {
         Assert.assertEquals(rule.cleanCodeAttribute(), CleanCodeAttribute.TRUSTWORTHY);
         Assert.assertTrue(rule.securityStandards().containsAll(List.of("cwe:327", "cwe:780", "owaspTop10-2025:a4")),
                 rule.securityStandards().toString());
-        Assert.assertNotNull(rule.debtRemediationFunction());
+        Assert.assertNull(rule.debtRemediationFunction());
         Assert.assertEquals(rule.status(), RuleStatus.READY);
         Assert.assertTrue(rule.tags().containsAll(List.of("cwe-327", "owasp-2025-a04")), rule.tags().toString());
         String htmlDescription = Objects.requireNonNullElse(rule.htmlDescription(), "");

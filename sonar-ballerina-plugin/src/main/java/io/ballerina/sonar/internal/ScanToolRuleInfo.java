@@ -22,11 +22,10 @@ import com.google.gson.annotations.SerializedName;
 
 import java.util.List;
 
-// ruleSpecification and quickfix are not mapped, since the SonarQube server has no counterpart for them
 record ScanToolRuleInfo(String title, String type, String status, Remediation remediation, List<String> tags,
-                        String defaultSeverity, String ruleSpecification, String sqKey, String scope,
-                        String quickfix, String cleanCodeAttribute, List<Impact> impacts,
-                        SecurityStandards securityStandards, String helpUri, Description description) {
+                        String defaultSeverity, String sqKey, String scope, String cleanCodeAttribute,
+                        List<Impact> impacts, SecurityStandards securityStandards, String helpUri,
+                        Description description) {
 
     record Remediation(String func, String constantCost, String linearFactor, String linearOffset,
                        String linearDesc) {

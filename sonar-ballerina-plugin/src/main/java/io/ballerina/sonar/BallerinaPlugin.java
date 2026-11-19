@@ -18,6 +18,11 @@
 package io.ballerina.sonar;
 
 import org.sonar.api.Plugin;
+import org.sonar.api.config.PropertyDefinition;
+import org.sonar.api.config.PropertyDefinition.ConfigScope;
+
+import static io.ballerina.sonar.Constants.FILE_SUFFIXES_DEFAULT_VALUE;
+import static io.ballerina.sonar.Constants.FILE_SUFFIXES_KEY;
 
 /**
  * Represents the implementation of the {@link Plugin} class for Ballerina.
@@ -28,6 +33,14 @@ public class BallerinaPlugin implements Plugin {
     @Override
     public void define(Context context) {
         context.addExtensions(
+                PropertyDefinition.builder(FILE_SUFFIXES_KEY)
+                        .name("File suffixes")
+                        .description("List of suffixes of the Ballerina files to analyze.")
+                        .category("Ballerina")
+                        .defaultValue(FILE_SUFFIXES_DEFAULT_VALUE)
+                        .multiValues(true)
+                        .onConfigScopes(ConfigScope.PROJECT)
+                        .build(),
                 BallerinaLanguage.class,
                 BallerinaSensor.class,
                 BallerinaRulesDefinition.class,

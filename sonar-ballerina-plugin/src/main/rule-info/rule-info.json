@@ -2,11 +2,7 @@
   {
     "title": "\"checkpanic\" should not be used",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "error-handling",
       "cwe",
@@ -14,11 +10,9 @@
       "cwe-636",
       "owasp-2025-a10"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "COMPLETE",
     "impacts": [
       {
@@ -85,21 +79,15 @@
   {
     "title": "Unused function parameters should be removed",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "unused",
       "cwe",
       "cwe-561"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "CLEAR",
     "impacts": [
       {
@@ -149,19 +137,13 @@
   {
     "title": "Public functions should be \"isolated\"",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "concurrency"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:3",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "CONVENTIONAL",
     "impacts": [
       {
@@ -202,19 +184,13 @@
   {
     "title": "Public methods should be \"isolated\"",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "concurrency"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:4",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "CONVENTIONAL",
     "impacts": [
       {
@@ -255,19 +231,13 @@
   {
     "title": "Public classes should be \"isolated\"",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "concurrency"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:5",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "CONVENTIONAL",
     "impacts": [
       {
@@ -308,19 +278,13 @@
   {
     "title": "Public objects should be \"isolated\"",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "concurrency"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:6",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "CONVENTIONAL",
     "impacts": [
       {
@@ -361,21 +325,15 @@
   {
     "title": "Conditions should not always evaluate to \"true\"",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "trivial",
       "cwe",
       "cwe-571"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:7",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "LOGICAL",
     "impacts": [
       {
@@ -425,21 +383,15 @@
   {
     "title": "Conditions should not always evaluate to \"false\"",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "trivial",
       "cwe",
       "cwe-570"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:8",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "LOGICAL",
     "impacts": [
       {
@@ -489,21 +441,15 @@
   {
     "title": "Operations should not always evaluate to the same value",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "trivial",
       "cwe",
       "cwe-1164"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:9",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "LOGICAL",
     "impacts": [
       {
@@ -553,21 +499,15 @@
   {
     "title": "Variables should not be assigned to themselves",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "trivial",
       "cwe",
       "cwe-1164"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:10",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "LOGICAL",
     "impacts": [
       {
@@ -617,21 +557,15 @@
   {
     "title": "Unused private class fields should be removed",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "5min"
-    },
+    "status": "ready",
     "tags": [
       "unused",
       "cwe",
       "cwe-561"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:11",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "CLEAR",
     "impacts": [
       {
@@ -681,21 +615,15 @@
   {
     "title": "Range expressions should move in the intended direction",
     "type": "CODE_SMELL",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "pitfall",
       "cwe",
       "cwe-561"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina:12",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "LOGICAL",
     "impacts": [
       {
@@ -745,11 +673,7 @@
   {
     "title": "Secrets should not be hard-coded",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "secrets",
       "credentials",
@@ -758,11 +682,9 @@
       "cwe-259",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina:13",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -824,11 +746,7 @@
   {
     "title": "Secrets should be read from configurable variables",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "secrets",
       "configurable",
@@ -836,11 +754,9 @@
       "cwe-798",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina:14",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -897,11 +813,7 @@
   {
     "title": "Encryption should use secure cipher modes and padding schemes",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "crypto",
       "cipher",
@@ -910,11 +822,9 @@
       "cwe-780",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/crypto:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1000,11 +910,7 @@
   {
     "title": "Passwords should be hashed with slow hashing algorithms",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "1h"
-    },
+    "status": "ready",
     "tags": [
       "crypto",
       "hashing",
@@ -1013,11 +919,9 @@
       "cwe-327",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/crypto:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1096,11 +1000,7 @@
   {
     "title": "Initialization vectors should not be hard-coded",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "crypto",
       "cipher",
@@ -1108,11 +1008,9 @@
       "cwe-323",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/crypto:3",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1186,11 +1084,7 @@
   {
     "title": "Publicly writable directories should not be used for file operations",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "file",
       "cwe",
@@ -1198,11 +1092,9 @@
       "cwe-379",
       "owasp-2025-a01"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/file:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1264,11 +1156,7 @@
   {
     "title": "File function calls should not be vulnerable to path injection attacks",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "1h"
-    },
+    "status": "ready",
     "tags": [
       "file",
       "injection",
@@ -1276,11 +1164,9 @@
       "cwe-22",
       "owasp-2025-a01"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/file:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "COMPLETE",
     "impacts": [
       {
@@ -1337,11 +1223,7 @@
   {
     "title": "HTTP resources should not use the \"default\" accessor",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "http",
       "csrf",
@@ -1350,11 +1232,9 @@
       "cwe-749",
       "owasp-2025-a01"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/http:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1416,11 +1296,7 @@
   {
     "title": "Cross-Origin Resource Sharing policies should not be permissive",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "http",
       "cors",
@@ -1428,11 +1304,9 @@
       "cwe-942",
       "owasp-2025-a02"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/http:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1489,11 +1363,7 @@
   {
     "title": "Server-side requests should not be vulnerable to traversing attacks",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "1h"
-    },
+    "status": "ready",
     "tags": [
       "http",
       "ssrf",
@@ -1501,11 +1371,9 @@
       "cwe-918",
       "owasp-2025-a01"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/http:3",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "COMPLETE",
     "impacts": [
       {
@@ -1561,11 +1429,7 @@
   {
     "title": "HTTP request redirections should not be open to forging attacks",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "1h"
-    },
+    "status": "ready",
     "tags": [
       "http",
       "redirect",
@@ -1573,11 +1437,9 @@
       "cwe-601",
       "owasp-2025-a01"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/http:4",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "COMPLETE",
     "impacts": [
       {
@@ -1633,11 +1495,7 @@
   {
     "title": "I/O function calls should not be vulnerable to path injection attacks",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "1h"
-    },
+    "status": "ready",
     "tags": [
       "io",
       "injection",
@@ -1645,11 +1503,9 @@
       "cwe-22",
       "owasp-2025-a01"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/io:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "COMPLETE",
     "impacts": [
       {
@@ -1706,11 +1562,7 @@
   {
     "title": "Configurable variables should not be printed to the console",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "io",
       "logging",
@@ -1719,11 +1571,9 @@
       "cwe-200",
       "owasp-2025-a09"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/io:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1786,11 +1636,7 @@
   {
     "title": "Sensitive configurable variables should not be logged",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "log",
       "leak",
@@ -1798,11 +1644,9 @@
       "cwe-532",
       "owasp-2025-a09"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/log:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1859,11 +1703,7 @@
   {
     "title": "Log files should not be written to world-writable directories",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "log",
       "file-system",
@@ -1871,11 +1711,9 @@
       "cwe-379",
       "owasp-2025-a01"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/log:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -1932,11 +1770,7 @@
   {
     "title": "OS commands should not be vulnerable to argument injection attacks",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "1h"
-    },
+    "status": "ready",
     "tags": [
       "os",
       "injection",
@@ -1945,11 +1779,9 @@
       "cwe-88",
       "owasp-2025-a05"
     ],
-    "defaultSeverity": "Blocker",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Blocker",
     "sqKey": "ballerina/os:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "COMPLETE",
     "impacts": [
       {
@@ -2011,11 +1843,7 @@
   {
     "title": "Environment variables should not be set from user input",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "1h"
-    },
+    "status": "ready",
     "tags": [
       "os",
       "injection",
@@ -2025,11 +1853,9 @@
       "owasp-2025-a02",
       "owasp-2025-a06"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/os:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "COMPLETE",
     "impacts": [
       {
@@ -2096,11 +1922,7 @@
   {
     "title": "Commands should not be executed through a shell interpreter",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "os",
       "injection",
@@ -2108,11 +1930,9 @@
       "cwe-78",
       "owasp-2025-a05"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/os:3",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2169,11 +1989,7 @@
   {
     "title": "Commands should not be resolved through the \"PATH\" environment variable",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "os",
       "untrusted-search-path",
@@ -2181,11 +1997,9 @@
       "cwe-426",
       "owasp-2025-a05"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/os:4",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2242,11 +2056,7 @@
   {
     "title": "JSON Web Tokens should be signed and verified with strong algorithms",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "jwt",
       "crypto",
@@ -2255,11 +2065,9 @@
       "cwe-347",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/jwt:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2321,11 +2129,7 @@
   {
     "title": "JSON Web Tokens should be validated with a signature configuration",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "jwt",
       "authentication",
@@ -2333,11 +2137,9 @@
       "cwe-347",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/jwt:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2394,11 +2196,7 @@
   {
     "title": "JSON Web Token validation should check the issuer and the audience",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "jwt",
       "authentication",
@@ -2406,11 +2204,9 @@
       "cwe-287",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/jwt:3",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2467,11 +2263,7 @@
   {
     "title": "JSON Web Tokens should not be issued with a long expiry time",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "jwt",
       "session-management",
@@ -2479,11 +2271,9 @@
       "cwe-613",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/jwt:4",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2540,11 +2330,7 @@
   {
     "title": "JSON Web Tokens should not be validated with a large clock skew",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "jwt",
       "session-management",
@@ -2552,11 +2338,9 @@
       "cwe-613",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/jwt:5",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2613,11 +2397,7 @@
   {
     "title": "TLS validation should not be disabled on JWKS endpoint clients",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "jwt",
       "tls",
@@ -2626,11 +2406,9 @@
       "cwe-296",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/jwt:6",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2692,11 +2470,7 @@
   {
     "title": "JSON Web Tokens should not be decoded without being verified",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "20min"
-    },
+    "status": "ready",
     "tags": [
       "jwt",
       "authentication",
@@ -2705,11 +2479,9 @@
       "cwe-345",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Minor",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Minor",
     "sqKey": "ballerina/jwt:7",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2771,11 +2543,7 @@
   {
     "title": "Server hostnames should be verified during SSL/TLS connections",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "email",
       "tls",
@@ -2784,11 +2552,9 @@
       "cwe-295",
       "owasp-2025-a07"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/email:1",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2850,11 +2616,7 @@
   {
     "title": "Mail server connections should use TLS",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "email",
       "tls",
@@ -2862,11 +2624,9 @@
       "cwe-319",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Critical",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Critical",
     "sqKey": "ballerina/email:2",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -2923,11 +2683,7 @@
   {
     "title": "Mail clients should not fall back to cleartext when TLS is unavailable",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "email",
       "tls",
@@ -2936,11 +2692,9 @@
       "cwe-319",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/email:3",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {
@@ -3002,11 +2756,7 @@
   {
     "title": "Weak TLS protocol versions should not be used",
     "type": "VULNERABILITY",
-    "status": "ready",
-    "remediation": {
-      "func": "Constant/Issue",
-      "constantCost": "10min"
-    },
+    "status": "ready",
     "tags": [
       "email",
       "tls",
@@ -3015,11 +2765,9 @@
       "cwe-326",
       "owasp-2025-a04"
     ],
-    "defaultSeverity": "Major",
-    "ruleSpecification": "N/A",
+    "defaultSeverity": "Major",
     "sqKey": "ballerina/email:4",
-    "scope": "All",
-    "quickfix": "unknown",
+    "scope": "All",
     "cleanCodeAttribute": "TRUSTWORTHY",
     "impacts": [
       {

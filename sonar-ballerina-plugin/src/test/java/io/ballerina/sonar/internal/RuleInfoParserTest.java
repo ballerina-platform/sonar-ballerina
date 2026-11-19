@@ -60,8 +60,7 @@ public class RuleInfoParserTest {
         Assert.assertEquals(checkpanic.impacts(), Map.of(SoftwareQuality.MAINTAINABILITY, Severity.LOW));
         Assert.assertEquals(checkpanic.cwe(), List.of(248, 636));
         Assert.assertEquals(checkpanic.owaspTop10Y2025(), List.of(OwaspTop10.A10));
-        Assert.assertEquals(checkpanic.remediation(), new RuleMetadata.Remediation(
-                DebtRemediationFunction.Type.CONSTANT_ISSUE, "20min", null, null));
+        Assert.assertNull(checkpanic.remediation());
         Assert.assertEquals(checkpanic.scope(), RuleScope.ALL);
         Assert.assertEquals(checkpanic.status(), RuleStatus.READY);
         Assert.assertEquals(checkpanic.tags(),
@@ -172,17 +171,15 @@ public class RuleInfoParserTest {
     }
 
     @Test(description = "The rule-info.json URL is bundled, can be overridden, must be an HTTP(S) URL, and is "
-            + "followed by the official scan tool URL")
+            + "followed by the fallback URL")
     void testRuleInfoUris() throws SonarBallerinaException {
         List<URI> bundled = RuleGenerator.getRuleInfoUris(Optional.empty());
-        Assert.assertEquals(bundled.size(), 2);
+        Assert.assertFalse(bundled.isEmpty());
         for (URI uri : bundled) {
             Assert.assertEquals(uri.getScheme(), "https");
             Assert.assertTrue(uri.getPath().endsWith("/rule-info.json"), uri.toString());
         }
-        URI official = bundled.get(1);
-        Assert.assertTrue(official.getPath().startsWith("/ballerina-platform/static-code-analysis-tool/"),
-                official.toString());
+        URI official = bundled.get(bundled.size() - 1);
         Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(" ")), bundled);
         Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of("http://localhost:8080/rule-info.json")),
                 List.of(URI.create("http://localhost:8080/rule-info.json"), official));

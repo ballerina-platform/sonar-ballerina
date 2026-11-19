@@ -64,10 +64,10 @@ java {
     }
 }
 
-def ruleInfoUrl = 'https://raw.githubusercontent.com/CharanaManawathilake/static-code-analysis-tool/' +
-        'rule-info-descriptions/scan-command/tool-scan/resources/rule-info.json'
-def ruleInfoFallbackUrl = 'https://raw.githubusercontent.com/ballerina-platform/static-code-analysis-tool/main/' +
-        'scan-command/tool-scan/resources/rule-info.json'
+def ruleInfoUrl = 'https://raw.githubusercontent.com/CharanaManawathilake/sonar-ballerina/main/' +
+        'sonar-ballerina-plugin/src/main/rule-info/rule-info.json'
+def ruleInfoFallbackUrl = 'https://raw.githubusercontent.com/CharanaManawathilake/sonar-ballerina/main/' +
+        'sonar-ballerina-plugin/src/main/rule-info/rule-info.json'
 def ruleInfoSnapshot = file('src/main/rule-info/rule-info.json')
 def generatedRuleInfoDir = layout.buildDirectory.dir('generated/rule-info')
 
@@ -218,12 +218,6 @@ tasks.test {
     }
 }
 
-configurations {
-    testImplementation {
-        extendsFrom compileOnly
-    }
-}
-
 // JAR configurations
 ext {
     set("buildNumber", System.getProperty("buildNumber"))
@@ -254,7 +248,7 @@ tasks.jar {
                 'Plugin-RequiredForLanguages': 'ballerina',
                 'Sonar-Version': sonarPluginAPIVersion.tokenize('.').take(2).join('.'),
                 'Version': "${project.version}",
-                'Jre-Min-Version': '17'
+                'Jre-Min-Version': '21'
         )
     }
 
