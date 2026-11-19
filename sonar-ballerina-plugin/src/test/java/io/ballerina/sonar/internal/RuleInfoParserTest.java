@@ -163,6 +163,23 @@ public class RuleInfoParserTest {
         Assert.assertEquals(rules.get(0).name(), "First");
     }
 
+    @Test(description = "A file with a value that SonarQube would reject is rejected as a whole")
+    void testValuesSonarQubeRejects() {
+        for (String rule : List.of(
+                "{\"title\": \"T\", \"sqKey\": \"ballerina:9\", \"tags\": [\"Error-Handling\"]}",
+                "{\"title\": \"T\", \"sqKey\": \"ballerina:9\", \"remediation\": {\"constantCost\": \"5 minutes\"}}",
+                "{\"title\": \"T\", \"sqKey\": \"ballerina:9\", \"remediation\": {\"func\": \"Linear\", "
+                        + "\"linearFactor\": \"often\"}}")) {
+            String json = "[{\"title\": \"Valid\", \"sqKey\": \"ballerina:1\"}, " + rule + "]";
+            try {
+                RuleInfoParser.parse(json);
+                Assert.fail("Accepted " + rule);
+            } catch (SonarBallerinaException e) {
+                Assert.assertTrue(e.getMessage().contains("ballerina:9"), e.getMessage());
+            }
+        }
+    }
+
     @Test(description = "Content that is not a list of valid rules is rejected")
     void testInvalidContent() {
         for (String json : List.of("{\"title\": \"x\"}", "[", "", "[]", "[{\"title\": \"x\"}]")) {

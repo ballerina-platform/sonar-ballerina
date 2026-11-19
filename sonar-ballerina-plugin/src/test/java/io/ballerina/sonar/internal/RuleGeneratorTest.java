@@ -51,6 +51,7 @@ public class RuleGeneratorTest {
         serve("/fallback", 200, FALLBACK_RULE_INFO);
         serve("/missing", 404, "Not Found");
         serve("/invalid", 200, "<html></html>");
+        serve("/rejected", 200, "[{\"title\": \"Rejected\", \"sqKey\": \"ballerina:1\", \"tags\": [\"Bad Tag\"]}]");
         server.start();
         cacheDir = Files.createTempDirectory("sonar-ballerina");
         cachePath = cacheDir.resolve("rule-info.json");
@@ -71,7 +72,7 @@ public class RuleGeneratorTest {
 
     @Test(description = "The rules are loaded from the fallback URL when the first URL is unavailable or invalid")
     void testFallbackUrl() throws SonarBallerinaException {
-        for (String path : List.of("/missing", "/invalid")) {
+        for (String path : List.of("/missing", "/invalid", "/rejected")) {
             List<RuleMetadata> rules = load(List.of(uri(path), uri("/fallback")));
             Assert.assertEquals(rules.get(0).name(), "Fallback", path);
         }
@@ -80,8 +81,19 @@ public class RuleGeneratorTest {
     @Test(description = "The rules are loaded from the cache of the last successful fetch when no URL is available")
     void testCache() throws SonarBallerinaException {
         load(List.of(uri("/primary")));
+        RuleGenerator.getInstance().cacheFetchedRules();
         List<RuleMetadata> rules = load(List.of(uri("/missing")));
         Assert.assertEquals(rules.get(0).name(), "Primary");
+    }
+
+    @Test(description = "The fetched rules are cached only once they are confirmed as registered")
+    void testCacheWaitsForRegistration() throws SonarBallerinaException {
+        load(List.of(uri("/primary")));
+        Assert.assertFalse(Files.exists(cachePath));
+
+        load(List.of(uri("/missing")));
+        RuleGenerator.getInstance().cacheFetchedRules();
+        Assert.assertFalse(Files.exists(cachePath));
     }
 
     @Test(description = "The rules are loaded from the bundled snapshot when no URL or cache is available")

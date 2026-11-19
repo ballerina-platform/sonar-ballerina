@@ -70,6 +70,7 @@ public final class RuleGenerator {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
     private List<RuleMetadata> rules;
+    private Runnable pendingCacheWrite = () -> { };
 
     private RuleGenerator() {
     }
@@ -93,12 +94,23 @@ public final class RuleGenerator {
         return List.copyOf(rules);
     }
 
-    List<RuleMetadata> loadRules(List<URI> ruleInfoUris, Path ruleCachePath) throws SonarBallerinaException {
+    /**
+     * Caches the fetched rule-info.json. Call it only after SonarQube has registered the rules, so that a file it
+     * rejects never replaces a good cache.
+     */
+    public synchronized void cacheFetchedRules() {
+        pendingCacheWrite.run();
+        pendingCacheWrite = () -> { };
+    }
+
+    synchronized List<RuleMetadata> loadRules(List<URI> ruleInfoUris, Path ruleCachePath)
+            throws SonarBallerinaException {
+        pendingCacheWrite = () -> { };
         for (URI ruleInfoUri : ruleInfoUris) {
             try {
                 String ruleInfo = fetchRuleInfo(ruleInfoUri);
                 List<RuleMetadata> fetchedRules = RuleInfoParser.parse(ruleInfo);
-                saveRuleInfoIntoCache(ruleInfo, ruleCachePath);
+                pendingCacheWrite = () -> saveRuleInfoIntoCache(ruleInfo, ruleCachePath);
                 LOGGER.info("Loaded {} Ballerina rules from {}", fetchedRules.size(), ruleInfoUri);
                 return fetchedRules;
             } catch (SonarBallerinaException e) {

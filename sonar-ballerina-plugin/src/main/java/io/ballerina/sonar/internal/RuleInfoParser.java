@@ -34,7 +34,9 @@ import org.sonar.api.rule.RuleStatus;
 import org.sonar.api.rules.CleanCodeAttribute;
 import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.debt.DebtRemediationFunction;
+import org.sonar.api.server.rule.RuleTagFormat;
 import org.sonar.api.server.rule.RulesDefinition.OwaspTop10;
+import org.sonar.api.utils.Duration;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -57,6 +59,7 @@ public final class RuleInfoParser {
     private static final Pattern OWASP_CATEGORY = Pattern.compile("A0*(\\d{1,2})");
     private static final int OWASP_TOP_10_SIZE = 10;
     private static final String DEFAULT_SEVERITY = org.sonar.api.rule.Severity.MAJOR;
+    private static final int HOURS_IN_DAY = 24;
 
     private RuleInfoParser() {
     }
@@ -67,7 +70,8 @@ public final class RuleInfoParser {
      *
      * @param json the content of rule-info.json
      * @return the rules, in the order of the file
-     * @throws SonarBallerinaException if the content is not a JSON array of rules, or has no valid rule
+     * @throws SonarBallerinaException if the content is not a JSON array of rules, has no valid rule, or has a tag
+     *                                 or remediation effort that SonarQube would reject
      */
     public static List<RuleMetadata> parse(String json) throws SonarBallerinaException {
         List<ScanToolRuleInfo> ruleInfo;
@@ -90,7 +94,9 @@ public final class RuleInfoParser {
                 LOGGER.warn("Skipping the duplicate rule {} in rule-info.json", rule.sqKey());
                 continue;
             }
-            rules.add(toRuleMetadata(rule));
+            RuleMetadata metadata = toRuleMetadata(rule);
+            checkSonarQubeAccepts(metadata);
+            rules.add(metadata);
         }
         if (rules.isEmpty()) {
             throw new SonarBallerinaException("rule-info.json has no valid rules");
@@ -128,6 +134,32 @@ public final class RuleInfoParser {
                 cwe,
                 owasp,
                 RuleDescriptionRenderer.render(rule.description(), rule.title().strip(), rule.helpUri(), cwe, owasp));
+    }
+
+    // SonarQube fails to start on these values, so the whole file is rejected and the next source is tried instead
+    private static void checkSonarQubeAccepts(RuleMetadata rule) throws SonarBallerinaException {
+        for (String tag : rule.tags()) {
+            if (!RuleTagFormat.isValid(tag)) {
+                throw new SonarBallerinaException("The rule " + rule.id() + " has the invalid tag '" + tag + "'");
+            }
+        }
+        Remediation remediation = rule.remediation();
+        if (remediation != null) {
+            checkEffort(remediation.baseEffort(), rule.id());
+            checkEffort(remediation.gapMultiplier(), rule.id());
+        }
+    }
+
+    private static void checkEffort(String effort, String key) throws SonarBallerinaException {
+        if (effort == null) {
+            return;
+        }
+        try {
+            Duration.decode(effort, HOURS_IN_DAY);
+        } catch (IllegalArgumentException e) {
+            throw new SonarBallerinaException("The rule " + key + " has the invalid remediation effort '" + effort
+                    + "'", e);
+        }
     }
 
     private static RuleStatus parseStatus(String status, String key) {

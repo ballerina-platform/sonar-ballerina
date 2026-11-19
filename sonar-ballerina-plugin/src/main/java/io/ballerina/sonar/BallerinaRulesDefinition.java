@@ -56,6 +56,7 @@ public class BallerinaRulesDefinition implements RulesDefinition {
             defineRule(repository, rule);
         }
         repository.done();
+        RuleGenerator.getInstance().cacheFetchedRules();
     }
 
     static void defineRule(NewRepository repository, RuleMetadata rule) {
