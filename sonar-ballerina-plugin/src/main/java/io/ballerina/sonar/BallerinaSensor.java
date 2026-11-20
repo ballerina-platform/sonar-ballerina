@@ -113,7 +113,6 @@ class BallerinaSensor implements Sensor {
     }
 
     public void performLibraryCall(SensorContext context, Map<String, InputFile> pathAndInputFiles) {
-        logger.info("Analyzing Ballerina project");
         ProcessBuilder fileScan = new ProcessBuilder();
         fileScan.directory(context.fileSystem().baseDir());
         List<String> arguments = new ArrayList<>();
@@ -163,12 +162,9 @@ class BallerinaSensor implements Sensor {
                                    String fileContent) {
         try {
             JsonArray balScanOutput = JsonParser.parseString(fileContent).getAsJsonArray();
-            boolean reportingSuccessful = reportAnalysisIssues(context, balScanOutput, pathAndInputFiles);
-            if (reportingSuccessful) {
-                logger.info("Ballerina analysis successful!");
-                return;
+            if (!reportAnalysisIssues(context, balScanOutput, pathAndInputFiles)) {
+                logger.error("Unable to analyze Ballerina file batch!");
             }
-            logger.error("Unable to analyze Ballerina file batch!");
         } catch (JsonSyntaxException e) {
             throw new RuntimeException("Unable to report analysis results: " + e.getMessage(), e);
         }
