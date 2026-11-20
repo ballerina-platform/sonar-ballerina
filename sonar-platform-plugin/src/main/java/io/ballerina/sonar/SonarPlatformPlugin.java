@@ -64,8 +64,9 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     private static final String SCANNER = "sonar-scanner";
     private static final String PROJECT_VERSION = "sonar.projectVersion";
     private static final Pattern PLAIN_COMMAND_NAME = Pattern.compile("[A-Za-z0-9._-]+");
-    private static final String EXCLUSIONS = String.join(",", "**/*.java", "**/*.xml", "**/*.yaml", "**/*.go",
-            "**/*.kt", "**/*.js", "**/*.html", "**/*.YAML", "**/*.rb", "**/*.scala", "**/*.py");
+    private static final String NON_BALLERINA_FILES = String.join(",", "**/*.java", "**/*.xml", "**/*.yaml",
+            "**/*.go", "**/*.kt", "**/*.js", "**/*.html", "**/*.YAML", "**/*.rb", "**/*.scala", "**/*.py");
+    private static final String TEST_DIRECTORIES = String.join(",", "tests/**", "modules/*/tests/**");
 
     private final String scanner;
     private final boolean windows;
@@ -107,15 +108,19 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     }
 
     /**
-     * Builds the arguments of the scanner. The package version in {@code Ballerina.toml} becomes
-     * {@code sonar.projectVersion}, and as a {@code -D} argument it overrides any value in the properties file.
+     * Builds the arguments of the scanner. As {@code -D} arguments, they override any value in the properties file.
+     * The package version in {@code Ballerina.toml} becomes {@code sonar.projectVersion}. The Ballerina test
+     * directories are indexed as test code, and left out of the main code, since a file cannot be both.
      *
      * @param issuesFile the file that holds the issues found
      * @return the arguments of the scanner
      */
     List<String> scannerArguments(Path issuesFile) {
         List<String> scannerArguments = new ArrayList<>();
-        scannerArguments.add("-Dsonar.exclusions=" + EXCLUSIONS);
+        scannerArguments.add("-Dsonar.exclusions=" + NON_BALLERINA_FILES + "," + TEST_DIRECTORIES);
+        scannerArguments.add("-Dsonar.tests=.");
+        scannerArguments.add("-Dsonar.test.inclusions=" + TEST_DIRECTORIES);
+        scannerArguments.add("-Dsonar.test.exclusions=" + NON_BALLERINA_FILES);
         scannerArguments.add("-DanalyzedResultsPath=" + issuesFile);
         String sonarProjectPropertiesPath = platformPluginContext.platformArgs().get("sonarProjectPropertiesPath");
         if (sonarProjectPropertiesPath != null) {

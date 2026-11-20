@@ -41,8 +41,10 @@ import java.util.stream.Stream;
  * Tests the command that {@link SonarPlatformPlugin} runs to report the issues to SonarQube.
  */
 public class SonarPlatformPluginTest {
-    private static final String EXCLUSIONS = "-Dsonar.exclusions=**/*.java,**/*.xml,**/*.yaml,**/*.go,**/*.kt,"
-            + "**/*.js,**/*.html,**/*.YAML,**/*.rb,**/*.scala,**/*.py";
+    private static final String NON_BALLERINA_FILES = "**/*.java,**/*.xml,**/*.yaml,**/*.go,**/*.kt,**/*.js,"
+            + "**/*.html,**/*.YAML,**/*.rb,**/*.scala,**/*.py";
+    private static final String TEST_DIRECTORIES = "tests/**,modules/*/tests/**";
+    private static final String EXCLUSIONS = "-Dsonar.exclusions=" + NON_BALLERINA_FILES + "," + TEST_DIRECTORIES;
     private static final String PROPERTIES_PATH = "conf dir/sonar project.properties";
     private static final Path ISSUES_FILE = Path.of("issues.json");
 
@@ -105,7 +107,7 @@ public class SonarPlatformPluginTest {
         plugin.onScan(List.of());
 
         Path issuesFile = workspace.projectDir().resolve(Constants.ISSUES_FILE_PATH).toAbsolutePath();
-        Assert.assertEquals(Files.readAllLines(workspace.argumentsFile(), StandardCharsets.UTF_8), List.of(EXCLUSIONS,
+        Assert.assertEquals(Files.readAllLines(workspace.argumentsFile(), StandardCharsets.UTF_8), expectedArguments(
                 "-DanalyzedResultsPath=" + issuesFile, "-Dproject.settings=" + PROPERTIES_PATH,
                 "-Dsonar.projectVersion=1.2.3"));
         Assert.assertEquals(Files.readString(issuesFile, StandardCharsets.UTF_8), "[]");
@@ -120,7 +122,7 @@ public class SonarPlatformPluginTest {
 
         Path issuesFile = workspace.projectDir().resolve(Constants.ISSUES_FILE_PATH).toAbsolutePath();
         Assert.assertEquals(Files.readAllLines(workspace.argumentsFile(), StandardCharsets.UTF_8),
-                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + issuesFile));
+                expectedArguments("-DanalyzedResultsPath=" + issuesFile));
     }
 
     @Test
@@ -175,7 +177,7 @@ public class SonarPlatformPluginTest {
         Path projectDir = projectDir();
         writeBallerinaToml(projectDir, "2.3.0");
 
-        Assert.assertEquals(scannerArguments(projectDir, Map.of()), List.of(EXCLUSIONS,
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()), expectedArguments(
                 "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dsonar.projectVersion=2.3.0"));
     }
 
@@ -186,7 +188,7 @@ public class SonarPlatformPluginTest {
         Files.writeString(projectDir.resolve("sonar-project.properties"), "sonar.projectVersion=9.9\n",
                 StandardCharsets.UTF_8);
 
-        Assert.assertEquals(scannerArguments(projectDir, Map.of()), List.of(EXCLUSIONS,
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()), expectedArguments(
                 "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dsonar.projectVersion=2.3.0"));
     }
 
@@ -199,14 +201,14 @@ public class SonarPlatformPluginTest {
                 StandardCharsets.UTF_8);
 
         Assert.assertEquals(scannerArguments(projectDir, Map.of("sonarProjectPropertiesPath", PROPERTIES_PATH)),
-                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dproject.settings=" + PROPERTIES_PATH,
+                expectedArguments("-DanalyzedResultsPath=" + ISSUES_FILE, "-Dproject.settings=" + PROPERTIES_PATH,
                         "-Dsonar.projectVersion=2.3.0"));
     }
 
     @Test
     public void testScannerArgumentsWithoutBallerinaToml() throws IOException {
         Assert.assertEquals(scannerArguments(projectDir(), Map.of()),
-                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + ISSUES_FILE));
+                expectedArguments("-DanalyzedResultsPath=" + ISSUES_FILE));
     }
 
     @Test
@@ -216,7 +218,14 @@ public class SonarPlatformPluginTest {
                 StandardCharsets.UTF_8);
 
         Assert.assertEquals(scannerArguments(projectDir, Map.of()),
-                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + ISSUES_FILE));
+                expectedArguments("-DanalyzedResultsPath=" + ISSUES_FILE));
+    }
+
+    private static List<String> expectedArguments(String... arguments) {
+        List<String> expected = new ArrayList<>(List.of(EXCLUSIONS, "-Dsonar.tests=.",
+                "-Dsonar.test.inclusions=" + TEST_DIRECTORIES, "-Dsonar.test.exclusions=" + NON_BALLERINA_FILES));
+        expected.addAll(List.of(arguments));
+        return expected;
     }
 
     private static List<String> scannerArguments(Path projectDir, Map<String, String> platformArgs) {
