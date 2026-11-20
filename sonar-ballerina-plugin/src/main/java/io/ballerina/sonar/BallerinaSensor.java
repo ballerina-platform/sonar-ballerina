@@ -39,8 +39,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -109,7 +109,6 @@ class BallerinaSensor implements Sensor {
     }
 
     public void performLibraryCall(SensorContext context, Map<String, InputFile> pathAndInputFiles) {
-        logger.info("Analyzing Ballerina project");
         ProcessBuilder fileScan = new ProcessBuilder();
         fileScan.directory(context.fileSystem().baseDir());
         List<String> arguments = new ArrayList<>();
@@ -123,15 +122,19 @@ class BallerinaSensor implements Sensor {
 
         arguments.add("bal scan --platform-triggered --platforms=sonarqube");
         fileScan.command(arguments);
+        Path analyzedResultsFile = context.fileSystem().baseDir().toPath().resolve(ISSUES_FILE_PATH);
         try {
+            // A file left by an earlier scan must not be reported if this scan does not write a new one
+            Files.deleteIfExists(analyzedResultsFile);
             fileScan.inheritIO();
             Process process = fileScan.start();
             int exitCode = process.waitFor();
             if (exitCode == 0) {
-                String analyzedResultsFilePath = Paths.get(context.fileSystem().baseDir().getPath())
-                        .resolve(ISSUES_FILE_PATH)
-                        .toString();
-                String fileContent = getFileContent(analyzedResultsFilePath);
+                if (!Files.isRegularFile(analyzedResultsFile)) {
+                    throw new IllegalStateException("bal scan did not write the analysis results to "
+                            + analyzedResultsFile + "; see its output above for the cause");
+                }
+                String fileContent = getFileContent(analyzedResultsFile.toString());
                 reportFileContent(context, pathAndInputFiles, fileContent);
             } else {
                 logger.error("Failed to analyze Ballerina file batch with exit code: {}", exitCode);
@@ -155,12 +158,9 @@ class BallerinaSensor implements Sensor {
                                    String fileContent) {
         try {
             JsonArray balScanOutput = JsonParser.parseString(fileContent).getAsJsonArray();
-            boolean reportingSuccessful = reportAnalysisIssues(context, balScanOutput, pathAndInputFiles);
-            if (reportingSuccessful) {
-                logger.info("Ballerina analysis successful!");
-                return;
+            if (!reportAnalysisIssues(context, balScanOutput, pathAndInputFiles)) {
+                logger.error("Unable to analyze Ballerina file batch!");
             }
-            logger.error("Unable to analyze Ballerina file batch!");
         } catch (JsonSyntaxException e) {
             throw new RuntimeException("Unable to report analysis results: " + e.getMessage(), e);
         }
