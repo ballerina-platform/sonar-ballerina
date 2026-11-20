@@ -78,6 +78,27 @@ public class RuleGeneratorTest {
         }
     }
 
+    @Test(description = "An interrupted fetch falls back to the next URL, and the interrupt flag is restored")
+    void testInterruptedFetch() throws SonarBallerinaException {
+        Thread.currentThread().interrupt();
+        try {
+            List<RuleMetadata> rules = load(List.of(uri("/primary"), uri("/fallback")));
+            Assert.assertEquals(rules.get(0).name(), "Fallback");
+            Assert.assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test(description = "The cache file of earlier plugin versions is deleted once the fetched rules are cached")
+    void testLegacyCacheIsDeleted() throws SonarBallerinaException, IOException {
+        Path legacyCachePath = Files.writeString(cacheDir.resolve("rule-cache.json"), "[]");
+        load(List.of(uri("/primary")));
+        RuleGenerator.getInstance().cacheFetchedRules();
+        Assert.assertTrue(Files.exists(cachePath));
+        Assert.assertFalse(Files.exists(legacyCachePath));
+    }
+
     @Test(description = "The rules are loaded from the cache of the last successful fetch when no URL is available")
     void testCache() throws SonarBallerinaException {
         load(List.of(uri("/primary")));

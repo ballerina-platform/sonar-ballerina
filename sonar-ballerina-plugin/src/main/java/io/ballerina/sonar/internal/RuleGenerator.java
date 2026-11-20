@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.config.Configuration;
 
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,6 +62,8 @@ public final class RuleGenerator {
     private static final Duration FETCH_TIMEOUT = Duration.ofSeconds(30);
     private static final Path DEFAULT_RULE_CACHE_PATH = Paths.get(System.getProperty("user.home"),
             ".sonar-ballerina", "rule-info.json");
+    // The cache file written by the plugin before 0.4.0
+    private static final String LEGACY_RULE_CACHE_FILE = "rule-cache.json";
     private static final RuleGenerator INSTANCE = new RuleGenerator();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -106,29 +107,38 @@ public final class RuleGenerator {
     synchronized List<RuleMetadata> loadRules(List<URI> ruleInfoUris, Path ruleCachePath)
             throws SonarBallerinaException {
         pendingCacheWrite = () -> { };
-        for (URI ruleInfoUri : ruleInfoUris) {
-            try {
-                String ruleInfo = fetchRuleInfo(ruleInfoUri);
-                List<RuleMetadata> fetchedRules = RuleInfoParser.parse(ruleInfo);
-                pendingCacheWrite = () -> saveRuleInfoIntoCache(ruleInfo, ruleCachePath);
-                LOGGER.info("Loaded {} Ballerina rules from {}", fetchedRules.size(), ruleInfoUri);
-                return fetchedRules;
-            } catch (SonarBallerinaException e) {
-                LOGGER.warn("Failed to load the Ballerina rules from {}: {}", ruleInfoUri, describe(e));
+        boolean interrupted = false;
+        try {
+            for (URI ruleInfoUri : ruleInfoUris) {
+                try {
+                    String ruleInfo = fetchRuleInfo(ruleInfoUri);
+                    List<RuleMetadata> fetchedRules = RuleInfoParser.parse(ruleInfo);
+                    pendingCacheWrite = () -> saveRuleInfoIntoCache(ruleInfo, ruleCachePath);
+                    LOGGER.info("Loaded {} Ballerina rules from {}", fetchedRules.size(), ruleInfoUri);
+                    return fetchedRules;
+                } catch (SonarBallerinaException e) {
+                    LOGGER.warn("Failed to load the Ballerina rules from {}: {}", ruleInfoUri, describe(e));
+                    // A set interrupt flag fails the next fetch at once, so clear it until the rules are loaded
+                    interrupted |= Thread.interrupted();
+                }
+            }
+
+            Optional<List<RuleMetadata>> cachedRules = loadRulesFromCache(ruleCachePath);
+            if (cachedRules.isPresent()) {
+                LOGGER.warn("Loaded {} Ballerina rules from the copy cached at {} by the last successful fetch",
+                        cachedRules.get().size(), ruleCachePath);
+                return cachedRules.get();
+            }
+
+            List<RuleMetadata> bundledRules = RuleInfoParser.parse(readBundledResource(BUNDLED_RULE_INFO_PATH));
+            LOGGER.warn("Failed to fetch rule-info.json from {}. Loaded {} Ballerina rules from the snapshot "
+                    + "bundled with the plugin, which may be outdated", ruleInfoUris, bundledRules.size());
+            return bundledRules;
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
             }
         }
-
-        Optional<List<RuleMetadata>> cachedRules = loadRulesFromCache(ruleCachePath);
-        if (cachedRules.isPresent()) {
-            LOGGER.warn("Loaded {} Ballerina rules from the copy cached at {} by the last successful fetch",
-                    cachedRules.get().size(), ruleCachePath);
-            return cachedRules.get();
-        }
-
-        List<RuleMetadata> bundledRules = RuleInfoParser.parse(readBundledResource(BUNDLED_RULE_INFO_PATH));
-        LOGGER.warn("Failed to fetch rule-info.json from {}. Loaded {} Ballerina rules from the snapshot bundled "
-                + "with the plugin, which may be outdated", ruleInfoUris, bundledRules.size());
-        return bundledRules;
     }
 
     private String fetchRuleInfo(URI ruleInfoUri) throws SonarBallerinaException {
@@ -157,10 +167,8 @@ public final class RuleGenerator {
         if (!Files.exists(ruleCachePath)) {
             return Optional.empty();
         }
-        // java.io is used instead of Files, since an NIO file channel fails on a thread whose interrupt flag is set,
-        // which is the case after an interrupted fetch
-        try (InputStream in = new FileInputStream(ruleCachePath.toFile())) {
-            return Optional.of(RuleInfoParser.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8)));
+        try {
+            return Optional.of(RuleInfoParser.parse(Files.readString(ruleCachePath, StandardCharsets.UTF_8)));
         } catch (IOException | SonarBallerinaException e) {
             LOGGER.warn("Failed to load the Ballerina rules cached at {}: {}", ruleCachePath, describe(e));
             return Optional.empty();
@@ -179,16 +187,37 @@ public final class RuleGenerator {
             }
         } catch (IOException e) {
             LOGGER.warn("Failed to cache the Ballerina rules at {}: {}", ruleCachePath, e.getMessage());
+            return;
+        }
+        if (cacheDir != null) {
+            deleteLegacyCache(cacheDir.resolve(LEGACY_RULE_CACHE_FILE));
+        }
+    }
+
+    private static void deleteLegacyCache(Path legacyCachePath) {
+        try {
+            Files.deleteIfExists(legacyCachePath);
+        } catch (IOException e) {
+            LOGGER.debug("Failed to delete the legacy rule cache at {}: {}", legacyCachePath, e.getMessage());
         }
     }
 
     /**
      * Returns the URLs to fetch rule-info.json from, in order: the overridden or bundled URL, then the fallback URL.
+     * An invalid override is skipped with a warning.
      */
     static List<URI> getRuleInfoUris(Optional<String> override) throws SonarBallerinaException {
         Properties source = getBundledRuleInfoSource();
-        URI primary = toHttpUri(override.filter(u -> !u.isBlank())
-                .orElseGet(() -> getRequiredProperty(source, "url")));
+        URI primary = toHttpUri(getRequiredProperty(source, "url"));
+        Optional<String> overrideUrl = override.filter(u -> !u.isBlank());
+        if (overrideUrl.isPresent()) {
+            try {
+                primary = toHttpUri(overrideUrl.get());
+            } catch (SonarBallerinaException e) {
+                LOGGER.warn("Ignoring the {} property and using {} instead: {}", RULE_INFO_URL_PROPERTY, primary,
+                        e.getMessage());
+            }
+        }
         URI fallback = toHttpUri(getRequiredProperty(source, "fallbackUrl"));
         return primary.equals(fallback) ? List.of(primary) : List.of(primary, fallback);
     }
@@ -199,6 +228,9 @@ public final class RuleGenerator {
             if (!"https".equalsIgnoreCase(ruleInfoUri.getScheme()) && !"http".equalsIgnoreCase(
                     ruleInfoUri.getScheme())) {
                 throw new SonarBallerinaException("The URL of rule-info.json must be an HTTP(S) URL: " + uri);
+            }
+            if (ruleInfoUri.getHost() == null) {
+                throw new SonarBallerinaException("The URL of rule-info.json has no host: " + uri);
             }
             return ruleInfoUri;
         } catch (IllegalArgumentException e) {

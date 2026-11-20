@@ -90,8 +90,9 @@ public final class RuleInfoParser {
                 LOGGER.warn("Skipping a rule in rule-info.json without a key or a title");
                 continue;
             }
-            if (!ruleKeys.add(rule.sqKey())) {
-                LOGGER.warn("Skipping the duplicate rule {} in rule-info.json", rule.sqKey());
+            String key = rule.sqKey().strip();
+            if (!ruleKeys.add(key)) {
+                LOGGER.warn("Skipping the duplicate rule {} in rule-info.json", key);
                 continue;
             }
             RuleMetadata metadata = toRuleMetadata(rule);
@@ -180,20 +181,31 @@ public final class RuleInfoParser {
         String linearOffset = strip(remediation.linearOffset());
         String linearDesc = strip(remediation.linearDesc());
         String func = remediation.func() == null ? "" : remediation.func().strip().toLowerCase(Locale.ROOT);
-        Remediation parsed = switch (func) {
-            case "constant/issue", "" -> constantCost == null ? null
-                    : new Remediation(DebtRemediationFunction.Type.CONSTANT_ISSUE, constantCost, null, null);
-            case "linear" -> linearFactor == null ? null
-                    : new Remediation(DebtRemediationFunction.Type.LINEAR, null, linearFactor, linearDesc);
-            case "linear with offset" -> linearFactor == null || linearOffset == null ? null
-                    : new Remediation(DebtRemediationFunction.Type.LINEAR_OFFSET, linearOffset, linearFactor,
-                    linearDesc);
-            default -> null;
-        };
-        if (parsed == null) {
-            LOGGER.warn("Ignoring the invalid remediation '{}' of the rule {}", remediation.func(), key);
+        if (func.isEmpty() && constantCost == null && linearFactor == null && linearOffset == null) {
+            return null;
         }
-        return parsed;
+        String missingField;
+        switch (func) {
+            case "constant/issue", "" -> missingField = constantCost == null ? "constantCost" : null;
+            case "linear" -> missingField = linearFactor == null ? "linearFactor" : null;
+            case "linear with offset" -> missingField = linearFactor == null ? "linearFactor"
+                    : linearOffset == null ? "linearOffset" : null;
+            default -> {
+                LOGGER.warn("Ignoring the remediation of the rule {}, since its func '{}' is not 'Constant/Issue', "
+                        + "'Linear' or 'Linear with offset'", key, remediation.func());
+                return null;
+            }
+        }
+        if (missingField != null) {
+            LOGGER.warn("Ignoring the remediation of the rule {}, since it has no {}", key, missingField);
+            return null;
+        }
+        return switch (func) {
+            case "linear" -> new Remediation(DebtRemediationFunction.Type.LINEAR, null, linearFactor, linearDesc);
+            case "linear with offset" -> new Remediation(DebtRemediationFunction.Type.LINEAR_OFFSET, linearOffset,
+                    linearFactor, linearDesc);
+            default -> new Remediation(DebtRemediationFunction.Type.CONSTANT_ISSUE, constantCost, null, null);
+        };
     }
 
     private static Map<SoftwareQuality, Severity> parseImpacts(List<Impact> impacts, String key) {

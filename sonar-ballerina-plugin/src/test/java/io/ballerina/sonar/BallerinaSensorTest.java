@@ -18,6 +18,7 @@
 package io.ballerina.sonar;
 
 import com.sonarsource.scanner.engine.sensor.test.fixtures.SensorContextTester;
+import org.apache.commons.lang3.SystemUtils;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.TextRange;
 import org.sonar.api.batch.rule.Severity;
@@ -119,6 +120,8 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         Path projectDir = testResources.resolve("ballerina-project-wo-report");
         SensorContextTester context = SensorContextTester.create(projectDir);
         cleanUp(projectDir);
+        // bal scan requires the Dependencies.toml that bal build generates with the installed distribution
+        buildProject(projectDir);
 
         // Add mock input files
         InputFile ballerinaFile = createInputFileFromPath(projectDir, "main.bal");
@@ -148,6 +151,19 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         Assert.assertEquals(textRange.start().lineOffset(), startLineOffset);
         Assert.assertEquals(textRange.end().line(), endLine);
         Assert.assertEquals(textRange.end().lineOffset(), endLineOffset);
+    }
+
+    private static void buildProject(Path projectDir) throws IOException {
+        List<String> command = SystemUtils.IS_OS_WINDOWS
+                ? List.of("cmd", "/c", "bal build")
+                : List.of("sh", "-c", "bal build");
+        Process process = new ProcessBuilder(command).directory(projectDir.toFile()).inheritIO().start();
+        try {
+            Assert.assertEquals(process.waitFor(), 0, "bal build failed in " + projectDir);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while building " + projectDir, e);
+        }
     }
 
     private BallerinaSensor sensor() {

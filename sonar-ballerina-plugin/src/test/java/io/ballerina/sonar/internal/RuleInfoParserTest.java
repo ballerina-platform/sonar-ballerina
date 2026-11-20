@@ -144,20 +144,25 @@ public class RuleInfoParserTest {
                   "remediation": {"func": "Linear", "linearFactor": "2min", "linearDesc": "per param"}},
                  {"title": "O", "sqKey": "ballerina:2", "remediation": {"func": "Linear with offset",
                   "linearFactor": "2min", "linearOffset": "5min"}},
-                 {"title": "M", "sqKey": "ballerina:3", "remediation": {"func": "Linear"}}]
+                 {"title": "M", "sqKey": "ballerina:3", "remediation": {"func": "Linear"}},
+                 {"title": "E", "sqKey": "ballerina:4", "remediation": {}},
+                 {"title": "U", "sqKey": "ballerina:5", "remediation": {"func": "Square", "constantCost": "5min"}}]
                 """);
         Assert.assertEquals(rules.get(0).remediation(), new RuleMetadata.Remediation(
                 DebtRemediationFunction.Type.LINEAR, null, "2min", "per param"));
         Assert.assertEquals(rules.get(1).remediation(), new RuleMetadata.Remediation(
                 DebtRemediationFunction.Type.LINEAR_OFFSET, "5min", "2min", null));
         Assert.assertNull(rules.get(2).remediation());
+        Assert.assertNull(rules.get(3).remediation());
+        Assert.assertNull(rules.get(4).remediation());
     }
 
     @Test(description = "Rules without a key or title, and duplicate rules, are skipped")
     void testInvalidRulesAreSkipped() throws SonarBallerinaException {
         List<RuleMetadata> rules = RuleInfoParser.parse("""
                 [{"title": "No key"}, {"sqKey": "ballerina:1"}, null,
-                 {"title": "First", "sqKey": "ballerina:2"}, {"title": "Second", "sqKey": "ballerina:2"}]
+                 {"title": "First", "sqKey": "ballerina:2"}, {"title": "Second", "sqKey": "ballerina:2"},
+                 {"title": "Third", "sqKey": " ballerina:2 "}]
                 """);
         Assert.assertEquals(rules.size(), 1);
         Assert.assertEquals(rules.get(0).name(), "First");
@@ -187,7 +192,7 @@ public class RuleInfoParserTest {
         }
     }
 
-    @Test(description = "The rule-info.json URL is bundled, can be overridden, must be an HTTP(S) URL, and is "
+    @Test(description = "The rule-info.json URL is bundled, can be overridden by a valid HTTP(S) URL, and is "
             + "followed by the fallback URL")
     void testRuleInfoUris() throws SonarBallerinaException {
         List<URI> bundled = RuleGenerator.getRuleInfoUris(Optional.empty());
@@ -201,9 +206,9 @@ public class RuleInfoParserTest {
         Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of("http://localhost:8080/rule-info.json")),
                 List.of(URI.create("http://localhost:8080/rule-info.json"), official));
         Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(official.toString())), List.of(official));
-        Assert.assertThrows(SonarBallerinaException.class,
-                () -> RuleGenerator.getRuleInfoUris(Optional.of("file:///etc/passwd")));
-        Assert.assertThrows(SonarBallerinaException.class,
-                () -> RuleGenerator.getRuleInfoUris(Optional.of("https://exa mple.com")));
+        for (String invalid : List.of("file:///etc/passwd", "https://exa mple.com", "example.com/rule-info.json",
+                "https:foo")) {
+            Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(invalid)), bundled, invalid);
+        }
     }
 }
