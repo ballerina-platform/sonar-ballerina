@@ -12,7 +12,8 @@ SonarQube is an open-source code quality and security platform. It analyzes code
 
 3. [Ballerina Static Code Analysis Tool](https://github.com/ballerina-platform/static-code-analysis-tool)
 
-4. [SonarQube Community Build 26.11](https://www.sonarsource.com/products/sonarqube/downloads/) or later (Sonar Plugin API 14.1 or later)
+4. SonarQube with Sonar Plugin API 13.4 or later. The plugin is tested on
+   [SonarQube Community Build 26.11](https://www.sonarsource.com/products/sonarqube/downloads/).
 
 5. [Sonar Scanner CLI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/scanners/sonarscanner/)
 
