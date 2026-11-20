@@ -64,10 +64,9 @@ java {
     }
 }
 
-def ruleInfoUrl = 'https://raw.githubusercontent.com/CharanaManawathilake/sonar-ballerina/sonarqube-26.11-support/' +
-        'sonar-ballerina-plugin/src/main/rule-info/rule-info.json'
-def ruleInfoFallbackUrl = 'https://raw.githubusercontent.com/ballerina-platform/static-code-analysis-tool/main/' +
-        'scan-command/tool-scan/resources/rule-info.json'
+def ruleInfoUrl = 'https://localhost:1/dummy-url/rule-info.json'
+def ruleInfoFallbackUrl = 'https://localhost:1/dummy-url/rule-info.json'
+
 def ruleInfoSnapshot = file('src/main/rule-info/rule-info.json')
 def generatedRuleInfoDir = layout.buildDirectory.dir('generated/rule-info')
 
