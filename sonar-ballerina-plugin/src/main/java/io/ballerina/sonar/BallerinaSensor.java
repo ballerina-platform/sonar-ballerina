@@ -39,8 +39,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -123,15 +123,19 @@ class BallerinaSensor implements Sensor {
 
         arguments.add("bal scan --platform-triggered --platforms=sonarqube");
         fileScan.command(arguments);
+        Path analyzedResultsFile = context.fileSystem().baseDir().toPath().resolve(ISSUES_FILE_PATH);
         try {
+            // A file left by an earlier scan must not be reported if this scan does not write a new one
+            Files.deleteIfExists(analyzedResultsFile);
             fileScan.inheritIO();
             Process process = fileScan.start();
             int exitCode = process.waitFor();
             if (exitCode == 0) {
-                String analyzedResultsFilePath = Paths.get(context.fileSystem().baseDir().getPath())
-                        .resolve(ISSUES_FILE_PATH)
-                        .toString();
-                String fileContent = getFileContent(analyzedResultsFilePath);
+                if (!Files.isRegularFile(analyzedResultsFile)) {
+                    throw new IllegalStateException("bal scan did not write the analysis results to "
+                            + analyzedResultsFile + "; see its output above for the cause");
+                }
+                String fileContent = getFileContent(analyzedResultsFile.toString());
                 reportFileContent(context, pathAndInputFiles, fileContent);
             } else {
                 logger.error("Failed to analyze Ballerina file batch with exit code: {}", exitCode);
