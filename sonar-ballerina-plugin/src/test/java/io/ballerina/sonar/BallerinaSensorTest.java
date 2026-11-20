@@ -140,6 +140,32 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         assertIssue(issue, "ballerina:ballerina:1", issue.primaryLocation().message(), 21, 17, 21, 39);
     }
 
+    @Test(description = "Test that the BallerinaSensor does not report a results file left by an earlier scan")
+    void testBallerinaSensorIgnoresOldResultsFile() throws IOException {
+        // Without a Ballerina.toml, bal scan cannot write new results in any version
+        Path projectDir = Files.createTempDirectory("ballerina-project-with-old-report");
+        Path mainBal = Files.copy(testResources.resolve("ballerina-project-with-report").resolve("main.bal"),
+                projectDir.resolve("main.bal"));
+        String oldResults = Files.readString(testResources.resolve("ballerina-project-with-report")
+                .resolve("ballerina-static-code-analysis-results.json.template"))
+                .replace("__file_path__", mainBal.toAbsolutePath().toString().replace("\\", "\\\\"));
+        Path oldResultsFile = Files.writeString(projectDir.resolve(ISSUES_FILE_PATH), oldResults,
+                StandardCharsets.UTF_8);
+        SensorContextTester context = SensorContextTester.create(projectDir);
+        context.fileSystem().add(createInputFileFromPath(projectDir, "main.bal"));
+
+        try {
+            sensor().execute(context);
+        } catch (IllegalStateException e) {
+            Assert.assertTrue(e.getMessage().startsWith("bal scan did not write the analysis results"),
+                    e.getMessage());
+        }
+
+        Assert.assertTrue(context.allIssues().isEmpty());
+        Assert.assertTrue(context.allExternalIssues().isEmpty());
+        Assert.assertFalse(Files.exists(oldResultsFile));
+    }
+
     private void assertIssue(Issue issue, String ruleKey, String message, int startLine, int startLineOffset,
                              int endLine, int endLineOffset) {
         Assert.assertEquals(issue.ruleKey().toString(), ruleKey);
