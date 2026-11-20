@@ -25,6 +25,9 @@ import io.ballerina.scan.Issue;
 import io.ballerina.scan.PlatformPluginContext;
 import io.ballerina.scan.StaticCodeAnalysisPlatformPlugin;
 import io.ballerina.scan.internal.IssueImpl;
+import io.ballerina.toml.api.Toml;
+import io.ballerina.toml.semantic.ast.TomlStringValueNode;
+import io.ballerina.toml.semantic.ast.TomlValueNode;
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.FileWriter;
@@ -32,9 +35,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import static io.ballerina.sonar.Constants.END_LINE;
@@ -57,6 +62,7 @@ import static io.ballerina.sonar.Constants.START_LINE_OFFSET;
  */
 public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
     private static final String SCANNER = "sonar-scanner";
+    private static final String PROJECT_VERSION = "sonar.projectVersion";
     private static final Pattern PLAIN_COMMAND_NAME = Pattern.compile("[A-Za-z0-9._-]+");
     private static final String EXCLUSIONS = String.join(",", "**/*.java", "**/*.xml", "**/*.yaml", "**/*.go",
             "**/*.kt", "**/*.js", "**/*.html", "**/*.YAML", "**/*.rb", "**/*.scala", "**/*.py");
@@ -93,6 +99,21 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
             return;
         }
 
+        ProcessBuilder processBuilder = new ProcessBuilder(command(windows, scanner, scannerArguments(issuesFile)))
+                .directory(projectDir.toFile())
+                .redirectErrorStream(true)
+                .redirectInput(ProcessBuilder.Redirect.INHERIT);
+        runScanner(processBuilder, System.err);
+    }
+
+    /**
+     * Builds the arguments of the scanner. The package version in {@code Ballerina.toml} becomes
+     * {@code sonar.projectVersion}, and as a {@code -D} argument it overrides any value in the properties file.
+     *
+     * @param issuesFile the file that holds the issues found
+     * @return the arguments of the scanner
+     */
+    List<String> scannerArguments(Path issuesFile) {
         List<String> scannerArguments = new ArrayList<>();
         scannerArguments.add("-Dsonar.exclusions=" + EXCLUSIONS);
         scannerArguments.add("-DanalyzedResultsPath=" + issuesFile);
@@ -100,12 +121,8 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
         if (sonarProjectPropertiesPath != null) {
             scannerArguments.add("-Dproject.settings=" + sonarProjectPropertiesPath);
         }
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command(windows, scanner, scannerArguments))
-                .directory(projectDir.toFile())
-                .redirectErrorStream(true)
-                .redirectInput(ProcessBuilder.Redirect.INHERIT);
-        runScanner(processBuilder, System.err);
+        packageVersion().ifPresent(version -> scannerArguments.add("-D" + PROJECT_VERSION + "=" + version));
+        return scannerArguments;
     }
 
     /**
@@ -178,6 +195,22 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
             end--;
         }
         return "\"" + argument + argument.substring(end) + "\"";
+    }
+
+    private Optional<String> packageVersion() {
+        Path ballerinaToml = projectDir.resolve("Ballerina.toml");
+        if (!Files.isRegularFile(ballerinaToml)) {
+            return Optional.empty();
+        }
+        Optional<TomlValueNode> version;
+        try {
+            version = Toml.read(ballerinaToml).get("package.version");
+        } catch (IOException | RuntimeException ex) {
+            return Optional.empty();
+        }
+        return version.filter(TomlStringValueNode.class::isInstance)
+                .map(node -> ((TomlStringValueNode) node).getValue().trim())
+                .filter(value -> !value.isEmpty());
     }
 
     private Path saveIssues(List<Issue> issues) {

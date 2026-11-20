@@ -44,6 +44,7 @@ public class SonarPlatformPluginTest {
     private static final String EXCLUSIONS = "-Dsonar.exclusions=**/*.java,**/*.xml,**/*.yaml,**/*.go,**/*.kt,"
             + "**/*.js,**/*.html,**/*.YAML,**/*.rb,**/*.scala,**/*.py";
     private static final String PROPERTIES_PATH = "conf dir/sonar project.properties";
+    private static final Path ISSUES_FILE = Path.of("issues.json");
 
     private final List<Path> tempDirs = new ArrayList<>();
 
@@ -98,13 +99,15 @@ public class SonarPlatformPluginTest {
     @Test
     public void testOnScanPassesEveryArgumentToScanner() throws IOException {
         Workspace workspace = workspace();
+        writeBallerinaToml(workspace.projectDir(), "1.2.3");
         SonarPlatformPlugin plugin = workspace.plugin(0);
         plugin.init(context(false, Map.of("sonarProjectPropertiesPath", PROPERTIES_PATH)));
         plugin.onScan(List.of());
 
         Path issuesFile = workspace.projectDir().resolve(Constants.ISSUES_FILE_PATH).toAbsolutePath();
         Assert.assertEquals(Files.readAllLines(workspace.argumentsFile(), StandardCharsets.UTF_8), List.of(EXCLUSIONS,
-                "-DanalyzedResultsPath=" + issuesFile, "-Dproject.settings=" + PROPERTIES_PATH));
+                "-DanalyzedResultsPath=" + issuesFile, "-Dproject.settings=" + PROPERTIES_PATH,
+                "-Dsonar.projectVersion=1.2.3"));
         Assert.assertEquals(Files.readString(issuesFile, StandardCharsets.UTF_8), "[]");
     }
 
@@ -165,6 +168,72 @@ public class SonarPlatformPluginTest {
         RuntimeException exception = Assert.expectThrows(RuntimeException.class, () -> plugin.onScan(List.of()));
         Assert.assertTrue(exception.getMessage().startsWith("Unable to run " + workspace.root().resolve("missing")
                 + ", which must be on the PATH: "), exception.getMessage());
+    }
+
+    @Test
+    public void testScannerArgumentsUsePackageVersion() throws IOException {
+        Path projectDir = projectDir();
+        writeBallerinaToml(projectDir, "2.3.0");
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()), List.of(EXCLUSIONS,
+                "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dsonar.projectVersion=2.3.0"));
+    }
+
+    @Test
+    public void testScannerArgumentsOverrideVersionOfDefaultPropertiesFile() throws IOException {
+        Path projectDir = projectDir();
+        writeBallerinaToml(projectDir, "2.3.0");
+        Files.writeString(projectDir.resolve("sonar-project.properties"), "sonar.projectVersion=9.9\n",
+                StandardCharsets.UTF_8);
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()), List.of(EXCLUSIONS,
+                "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dsonar.projectVersion=2.3.0"));
+    }
+
+    @Test
+    public void testScannerArgumentsOverrideVersionOfGivenPropertiesFile() throws IOException {
+        Path projectDir = projectDir();
+        writeBallerinaToml(projectDir, "2.3.0");
+        Files.createDirectories(projectDir.resolve("conf dir"));
+        Files.writeString(projectDir.resolve(PROPERTIES_PATH), "sonar.projectVersion = 9.9\n",
+                StandardCharsets.UTF_8);
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of("sonarProjectPropertiesPath", PROPERTIES_PATH)),
+                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dproject.settings=" + PROPERTIES_PATH,
+                        "-Dsonar.projectVersion=2.3.0"));
+    }
+
+    @Test
+    public void testScannerArgumentsWithoutBallerinaToml() throws IOException {
+        Assert.assertEquals(scannerArguments(projectDir(), Map.of()),
+                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + ISSUES_FILE));
+    }
+
+    @Test
+    public void testScannerArgumentsWithoutPackageVersion() throws IOException {
+        Path projectDir = projectDir();
+        Files.writeString(projectDir.resolve("Ballerina.toml"), "[package]\norg = \"myorg\"\nname = \"orders\"\n",
+                StandardCharsets.UTF_8);
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()),
+                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + ISSUES_FILE));
+    }
+
+    private static List<String> scannerArguments(Path projectDir, Map<String, String> platformArgs) {
+        SonarPlatformPlugin plugin = new SonarPlatformPlugin("sonar-scanner", false, projectDir);
+        plugin.init(context(false, platformArgs));
+        return plugin.scannerArguments(ISSUES_FILE);
+    }
+
+    private Path projectDir() throws IOException {
+        Path projectDir = Files.createTempDirectory("sonar platform plugin");
+        tempDirs.add(projectDir);
+        return projectDir;
+    }
+
+    private static void writeBallerinaToml(Path projectDir, String version) throws IOException {
+        Files.writeString(projectDir.resolve("Ballerina.toml"), "[package]\norg = \"myorg\"\nname = \"orders\"\n"
+                + "version = \"" + version + "\"\n", StandardCharsets.UTF_8);
     }
 
     private static CapturedStreams capture(Runnable runnable) {

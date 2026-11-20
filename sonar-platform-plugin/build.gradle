@@ -52,6 +52,7 @@ dependencies {
     implementation group :'com.google.code.gson', name: 'gson', version: "${gsonVersion}"
     implementation group: 'org.ballerinalang', name: 'ballerina-tools-api', version: "${ballerinaLangVersion}"
     implementation group: 'io.ballerina.scan', name: 'scan-command', version: "${scanToolVersion}"
+    implementation group: 'org.ballerinalang', name: 'toml-parser', version: "${ballerinaLangVersion}"
 
     testImplementation group: 'org.testng', name: 'testng', version: "${testngVersion}"
 
