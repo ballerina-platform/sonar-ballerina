@@ -32,6 +32,7 @@ import org.sonar.api.batch.rule.Severity;
 import org.sonar.api.batch.sensor.Sensor;
 import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.batch.sensor.SensorDescriptor;
+import org.sonar.api.issue.impact.SoftwareQuality;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.RuleType;
 
@@ -73,6 +74,9 @@ import static io.ballerina.sonar.Constants.VULNERABILITY;
  * @since 0.1.0
  */
 class BallerinaSensor implements Sensor {
+    // External analyzers do not report a severity, so their issues get the impact that matches Severity.MAJOR
+    private static final org.sonar.api.issue.impact.Severity EXTERNAL_IMPACT_SEVERITY =
+            org.sonar.api.issue.impact.Severity.MEDIUM;
     private final Logger logger = LoggerFactory.getLogger(BallerinaSensor.class);
     private final BallerinaLanguage language;
     private final Set<String> externalRules = new HashSet<>();
@@ -216,6 +220,11 @@ class BallerinaSensor implements Sensor {
             case VULNERABILITY -> RuleType.VULNERABILITY;
             default -> RuleType.CODE_SMELL;
         };
+        SoftwareQuality softwareQuality = switch (ruleType) {
+            case BUG -> SoftwareQuality.RELIABILITY;
+            case VULNERABILITY -> SoftwareQuality.SECURITY;
+            default -> SoftwareQuality.MAINTAINABILITY;
+        };
         if (!externalRules.contains(ruleID)) {
             context.newAdHocRule()
                     .engineId("ballerina_external_analyzer")
@@ -223,6 +232,7 @@ class BallerinaSensor implements Sensor {
                     .name(ruleID)
                     .type(ruleType)
                     .severity(Severity.MAJOR)
+                    .addDefaultImpact(softwareQuality, EXTERNAL_IMPACT_SEVERITY)
                     .description(message)
                     .save();
             externalRules.add(ruleID);
@@ -233,6 +243,7 @@ class BallerinaSensor implements Sensor {
                 .ruleId(ruleID)
                 .type(ruleType)
                 .severity(Severity.MAJOR)
+                .addImpact(softwareQuality, EXTERNAL_IMPACT_SEVERITY)
                 .remediationEffortMinutes(10L)
                 .at(context.newIssue()
                         .newLocation()

@@ -19,6 +19,7 @@ package io.ballerina.sonar;
 
 import io.ballerina.sonar.internal.RuleGenerator;
 import io.ballerina.sonar.internal.RuleMetadata;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.server.profile.BuiltInQualityProfilesDefinition;
 
 import java.util.List;
@@ -33,19 +34,26 @@ import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
  * @since 0.1.0
  */
 public class BallerinaProfileDefinition implements BuiltInQualityProfilesDefinition {
+
+    private final Configuration configuration;
+
+    public BallerinaProfileDefinition(Configuration configuration) {
+        this.configuration = configuration;
+    }
+
     @Override
     public void define(Context context) {
         NewBuiltInQualityProfile ballerinaQualityProfile = context.createBuiltInQualityProfile(PROFILE_NAME,
                 LANGUAGE_KEY);
         RuleGenerator ruleGenerator = RuleGenerator.getInstance();
         try {
-            List<RuleMetadata> ruleMetadata = ruleGenerator.loadRules();
+            List<RuleMetadata> ruleMetadata = ruleGenerator.loadRules(configuration);
             for (RuleMetadata metadata : ruleMetadata) {
                 ballerinaQualityProfile.activateRule(RULE_REPOSITORY_KEY, metadata.id());
             }
             ballerinaQualityProfile.done();
         } catch (SonarBallerinaException e) {
-            throw new RuntimeException("Error registering Ballerina profile", e);
+            throw new IllegalStateException("Error registering Ballerina profile", e);
         }
     }
 }

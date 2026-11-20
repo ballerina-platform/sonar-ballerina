@@ -12,9 +12,35 @@ SonarQube is an open-source code quality and security platform. It analyzes code
 
 3. [Ballerina Static Code Analysis Tool](https://github.com/ballerina-platform/static-code-analysis-tool)
 
-4. [SonarQube version: 9.9 (LTS)](https://www.sonarsource.com/products/sonarqube/downloads/lts/9-9-lts/)
+4. SonarQube with Sonar Plugin API 13.4 or later. The plugin is tested on
+   [SonarQube Community Build 26.11](https://www.sonarsource.com/products/sonarqube/downloads/).
 
-5. [Sonar Scanner CLI](https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/scanners/sonarscanner/)
+5. [Sonar Scanner CLI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/scanners/sonarscanner/)
+
+## Rule metadata
+
+The plugin loads its rules, including the "Why is this an issue?", "How can I fix it?" and "More info" sections shown
+for each rule, from the `rule-info.json` file of the Ballerina static code analysis tool. When the SonarQube server
+starts, the plugin uses the first of these sources that is available:
+
+1. The `ruleInfoUrl` set in `sonar-ballerina-plugin/build.gradle`, or the `sonar.ballerina.ruleInfoUrl` property in
+   `conf/sonar.properties` of the SonarQube server, which overrides it without rebuilding the plugin.
+2. The `ruleInfoFallbackUrl` set in `sonar-ballerina-plugin/build.gradle`, which points to the `main` branch of the
+   official scan tool repository. Rules without documentation there link to the
+   [scan rules page](https://ballerina.io/learn/scan-rules/) instead.
+3. The copy cached at `~/.sonar-ballerina/rule-info.json` by the last successful fetch.
+4. The snapshot bundled from `sonar-ballerina-plugin/src/main/rule-info/rule-info.json`, with a warning that the rules
+   may be outdated.
+
+A source that cannot be reached within the timeout, does not respond with HTTP 200, or does not contain valid rules is
+skipped with a warning. If none of the sources can be loaded, the SonarQube server fails to start. The rules are loaded
+once per server start, so restart the server to pick up changes to `rule-info.json`.
+
+To refresh the bundled snapshot from `ruleInfoUrl`, run `./gradlew :sonar-ballerina-plugin:updateRuleInfoSnapshot`, and
+review the diff before committing it.
+
+See [Writing rule-info.json entries](sonar-ballerina-plugin/src/main/rule-info/README.md) for how to decide the
+value of each field, and how to derive it from the `rules.json` file of each analyzer.
 
 ## Contribute to Ballerina
 

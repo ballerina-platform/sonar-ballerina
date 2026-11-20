@@ -41,9 +41,12 @@ import java.util.stream.Stream;
  * Tests the command that {@link SonarPlatformPlugin} runs to report the issues to SonarQube.
  */
 public class SonarPlatformPluginTest {
-    private static final String EXCLUSIONS = "-Dsonar.exclusions=**/*.java,**/*.xml,**/*.yaml,**/*.go,**/*.kt,"
-            + "**/*.js,**/*.html,**/*.YAML,**/*.rb,**/*.scala,**/*.py";
+    private static final String NON_BALLERINA_FILES = "**/*.java,**/*.xml,**/*.yaml,**/*.go,**/*.kt,**/*.js,"
+            + "**/*.html,**/*.YAML,**/*.rb,**/*.scala,**/*.py";
+    private static final String TEST_DIRECTORIES = "tests/**,modules/*/tests/**";
+    private static final String EXCLUSIONS = "-Dsonar.exclusions=" + NON_BALLERINA_FILES + "," + TEST_DIRECTORIES;
     private static final String PROPERTIES_PATH = "conf dir/sonar project.properties";
+    private static final Path ISSUES_FILE = Path.of("issues.json");
 
     private final List<Path> tempDirs = new ArrayList<>();
 
@@ -73,14 +76,21 @@ public class SonarPlatformPluginTest {
         List<String> command = SonarPlatformPlugin.command(true, "sonar-scanner",
                 List.of(EXCLUSIONS, "-DanalyzedResultsPath=C:\\a b\\results.json",
                         "-Dproject.settings=a&b.properties"));
-        Assert.assertEquals(command, List.of("cmd.exe", "/d", "/s", "/c", "\"\"sonar-scanner\" \"" + EXCLUSIONS
+        Assert.assertEquals(command, List.of("cmd.exe", "/d", "/s", "/c", "\"sonar-scanner \"" + EXCLUSIONS
                 + "\" \"-DanalyzedResultsPath=C:\\a b\\results.json\" \"-Dproject.settings=a&b.properties\"\""));
     }
 
     @Test
     public void testWindowsCommandDoublesTrailingBackslashes() {
         List<String> command = SonarPlatformPlugin.command(true, "sonar-scanner", List.of("-Dx=C:\\a b\\"));
-        Assert.assertEquals(command.get(4), "\"\"sonar-scanner\" \"-Dx=C:\\a b\\\\\"\"");
+        Assert.assertEquals(command.get(4), "\"sonar-scanner \"-Dx=C:\\a b\\\\\"\"");
+    }
+
+    @Test
+    public void testWindowsCommandQuotesScannerPathOnly() {
+        List<String> command = SonarPlatformPlugin.command(true, "C:\\Program Files\\scanner\\sonar-scanner.bat",
+                List.of("-Dx=1"));
+        Assert.assertEquals(command.get(4), "\"\"C:\\Program Files\\scanner\\sonar-scanner.bat\" \"-Dx=1\"\"");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -91,13 +101,15 @@ public class SonarPlatformPluginTest {
     @Test
     public void testOnScanPassesEveryArgumentToScanner() throws IOException {
         Workspace workspace = workspace();
+        writeBallerinaToml(workspace.projectDir(), "1.2.3");
         SonarPlatformPlugin plugin = workspace.plugin(0);
         plugin.init(context(false, Map.of("sonarProjectPropertiesPath", PROPERTIES_PATH)));
         plugin.onScan(List.of());
 
         Path issuesFile = workspace.projectDir().resolve(Constants.ISSUES_FILE_PATH).toAbsolutePath();
-        Assert.assertEquals(Files.readAllLines(workspace.argumentsFile(), StandardCharsets.UTF_8), List.of(EXCLUSIONS,
-                "-DanalyzedResultsPath=" + issuesFile, "-Dproject.settings=" + PROPERTIES_PATH));
+        Assert.assertEquals(Files.readAllLines(workspace.argumentsFile(), StandardCharsets.UTF_8), expectedArguments(
+                "-DanalyzedResultsPath=" + issuesFile, "-Dproject.settings=" + PROPERTIES_PATH,
+                "-Dsonar.projectVersion=1.2.3"));
         Assert.assertEquals(Files.readString(issuesFile, StandardCharsets.UTF_8), "[]");
     }
 
@@ -110,7 +122,7 @@ public class SonarPlatformPluginTest {
 
         Path issuesFile = workspace.projectDir().resolve(Constants.ISSUES_FILE_PATH).toAbsolutePath();
         Assert.assertEquals(Files.readAllLines(workspace.argumentsFile(), StandardCharsets.UTF_8),
-                List.of(EXCLUSIONS, "-DanalyzedResultsPath=" + issuesFile));
+                expectedArguments("-DanalyzedResultsPath=" + issuesFile));
     }
 
     @Test
@@ -158,6 +170,79 @@ public class SonarPlatformPluginTest {
         RuntimeException exception = Assert.expectThrows(RuntimeException.class, () -> plugin.onScan(List.of()));
         Assert.assertTrue(exception.getMessage().startsWith("Unable to run " + workspace.root().resolve("missing")
                 + ", which must be on the PATH: "), exception.getMessage());
+    }
+
+    @Test
+    public void testScannerArgumentsUsePackageVersion() throws IOException {
+        Path projectDir = projectDir();
+        writeBallerinaToml(projectDir, "2.3.0");
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()), expectedArguments(
+                "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dsonar.projectVersion=2.3.0"));
+    }
+
+    @Test
+    public void testScannerArgumentsOverrideVersionOfDefaultPropertiesFile() throws IOException {
+        Path projectDir = projectDir();
+        writeBallerinaToml(projectDir, "2.3.0");
+        Files.writeString(projectDir.resolve("sonar-project.properties"), "sonar.projectVersion=9.9\n",
+                StandardCharsets.UTF_8);
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()), expectedArguments(
+                "-DanalyzedResultsPath=" + ISSUES_FILE, "-Dsonar.projectVersion=2.3.0"));
+    }
+
+    @Test
+    public void testScannerArgumentsOverrideVersionOfGivenPropertiesFile() throws IOException {
+        Path projectDir = projectDir();
+        writeBallerinaToml(projectDir, "2.3.0");
+        Files.createDirectories(projectDir.resolve("conf dir"));
+        Files.writeString(projectDir.resolve(PROPERTIES_PATH), "sonar.projectVersion = 9.9\n",
+                StandardCharsets.UTF_8);
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of("sonarProjectPropertiesPath", PROPERTIES_PATH)),
+                expectedArguments("-DanalyzedResultsPath=" + ISSUES_FILE, "-Dproject.settings=" + PROPERTIES_PATH,
+                        "-Dsonar.projectVersion=2.3.0"));
+    }
+
+    @Test
+    public void testScannerArgumentsWithoutBallerinaToml() throws IOException {
+        Assert.assertEquals(scannerArguments(projectDir(), Map.of()),
+                expectedArguments("-DanalyzedResultsPath=" + ISSUES_FILE));
+    }
+
+    @Test
+    public void testScannerArgumentsWithoutPackageVersion() throws IOException {
+        Path projectDir = projectDir();
+        Files.writeString(projectDir.resolve("Ballerina.toml"), "[package]\norg = \"myorg\"\nname = \"orders\"\n",
+                StandardCharsets.UTF_8);
+
+        Assert.assertEquals(scannerArguments(projectDir, Map.of()),
+                expectedArguments("-DanalyzedResultsPath=" + ISSUES_FILE));
+    }
+
+    private static List<String> expectedArguments(String... arguments) {
+        List<String> expected = new ArrayList<>(List.of(EXCLUSIONS, "-Dsonar.tests=.",
+                "-Dsonar.test.inclusions=" + TEST_DIRECTORIES, "-Dsonar.test.exclusions=" + NON_BALLERINA_FILES));
+        expected.addAll(List.of(arguments));
+        return expected;
+    }
+
+    private static List<String> scannerArguments(Path projectDir, Map<String, String> platformArgs) {
+        SonarPlatformPlugin plugin = new SonarPlatformPlugin("sonar-scanner", false, projectDir);
+        plugin.init(context(false, platformArgs));
+        return plugin.scannerArguments(ISSUES_FILE);
+    }
+
+    private Path projectDir() throws IOException {
+        Path projectDir = Files.createTempDirectory("sonar platform plugin");
+        tempDirs.add(projectDir);
+        return projectDir;
+    }
+
+    private static void writeBallerinaToml(Path projectDir, String version) throws IOException {
+        Files.writeString(projectDir.resolve("Ballerina.toml"), "[package]\norg = \"myorg\"\nname = \"orders\"\n"
+                + "version = \"" + version + "\"\n", StandardCharsets.UTF_8);
     }
 
     private static CapturedStreams capture(Runnable runnable) {
