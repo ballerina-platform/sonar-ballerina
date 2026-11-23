@@ -145,11 +145,11 @@ public class SonarPlatformPluginTest {
 
         Assert.assertEquals(streams.out(), "");
         Assert.assertEquals(streams.err(), String.join(System.lineSeparator(),
-                "scanner stdout", "scanner stderr", "Reporting successful!", ""));
+                "scanner stdout", "scanner stderr", ""));
     }
 
     @Test
-    public void testOnScanReportsFailedScanner() throws IOException {
+    public void testOnScanOnlyWritesOutputOfFailedScanner() throws IOException {
         Workspace workspace = workspace();
         SonarPlatformPlugin plugin = workspace.plugin(3);
         plugin.init(context(false, Map.of()));
@@ -157,7 +157,7 @@ public class SonarPlatformPluginTest {
 
         Assert.assertEquals(streams.out(), "");
         Assert.assertEquals(streams.err(), String.join(System.lineSeparator(),
-                "scanner stdout", "scanner stderr", "Reporting failed!", ""));
+                "scanner stdout", "scanner stderr", ""));
     }
 
     @Test
