@@ -145,8 +145,11 @@ public class SonarPlatformPlugin implements StaticCodeAnalysisPlatformPlugin {
         try (InputStream scannerOutput = process.getInputStream()) {
             scannerOutput.transferTo(log);
             log.flush();
-            // The scanner reports its own outcome, as EXECUTION SUCCESS or EXECUTION FAILURE
-            process.waitFor();
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                throw new IllegalStateException(scanner + " failed with exit code " + exitCode
+                        + "; see its output above for the cause");
+            }
         } catch (IOException ex) {
             process.destroy();
             throw new RuntimeException(ex);

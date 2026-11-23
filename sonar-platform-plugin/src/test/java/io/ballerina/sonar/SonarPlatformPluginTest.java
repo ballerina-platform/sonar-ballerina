@@ -149,11 +149,16 @@ public class SonarPlatformPluginTest {
     }
 
     @Test
-    public void testOnScanOnlyWritesOutputOfFailedScanner() throws IOException {
+    public void testOnScanFailsWhenScannerFails() throws IOException {
         Workspace workspace = workspace();
         SonarPlatformPlugin plugin = workspace.plugin(3);
         plugin.init(context(false, Map.of()));
-        CapturedStreams streams = capture(() -> plugin.onScan(List.of()));
+        CapturedStreams streams = capture(() -> {
+            IllegalStateException exception = Assert.expectThrows(IllegalStateException.class,
+                    () -> plugin.onScan(List.of()));
+            Assert.assertEquals(exception.getMessage(), workspace.scanner()
+                    + " failed with exit code 3; see its output above for the cause");
+        });
 
         Assert.assertEquals(streams.out(), "");
         Assert.assertEquals(streams.err(), String.join(System.lineSeparator(),
@@ -289,8 +294,17 @@ public class SonarPlatformPluginTest {
      */
     private record Workspace(Path root, Path projectDir, Path argumentsFile) {
 
+        Path scannerDir() {
+            return root.resolve("scanner bin");
+        }
+
+        Path scanner() {
+            return scannerDir().resolve("sonar-scanner");
+        }
+
         SonarPlatformPlugin plugin(int scannerExitCode) throws IOException {
-            Path scanner = Files.createDirectories(root.resolve("scanner bin")).resolve("sonar-scanner");
+            Files.createDirectories(scannerDir());
+            Path scanner = scanner();
             Files.writeString(scanner, "#!/bin/sh\n"
                     + "for arg in \"$@\"; do printf '%s\\n' \"$arg\"; done > '" + argumentsFile + "'\n"
                     + "echo 'scanner stdout'\n"
