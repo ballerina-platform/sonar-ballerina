@@ -17,7 +17,8 @@ SonarQube is an open-source code quality and security platform. It analyzes code
 4. [SonarScanner CLI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/scanners/sonarscanner/)
    7.2 or later. The latest version is recommended.
 
-5. Java 21 or later, to run the SonarQube server and to build the plugins from source
+5. A JDK 21 installation to build the plugins from source, and a Java version supported by your SonarQube release to
+   run the server
 
 Both `bal` and `sonar-scanner` must be on the `PATH`.
 
@@ -74,7 +75,14 @@ The repository builds two plugins:
 Download both JARs from the GitHub packages of this repository
 ([`sonar-ballerina-plugin`](https://github.com/ballerina-platform/sonar-ballerina/packages/2580146),
 [`sonar-platform-plugin`](https://github.com/ballerina-platform/sonar-ballerina/packages/2580149)), or build them from
-source with `./gradlew build`.
+source. The build fetches `io.ballerina.scan:scan-command` from GitHub Packages, so first export your GitHub user name
+as `packageUser` and a personal access token with the `read:packages` scope as `packagePAT`:
+
+```bash
+export packageUser=<github-user-name>
+export packagePAT=<github-token>
+./gradlew build
+```
 
 ### Setting up the SonarQube server
 
@@ -139,7 +147,7 @@ sonar.projectName=My Ballerina Project
 
 | Property | Required | Description |
 |---|---|---|
-| `sonar.projectKey` | Yes | The unique key of the project in SonarQube. The project is created on the first analysis if it does not exist. |
+| `sonar.projectKey` | Yes | The unique key of the project in SonarQube. If the project does not exist, the first analysis creates it, but only when the token's user has the Create Projects permission. |
 | `sonar.token` | Yes, unless anonymous analysis is allowed | A token to authenticate with the server. Set the `SONAR_TOKEN` environment variable instead, so that the token is not committed. |
 | `sonar.host.url` | No | The URL of the SonarQube server. Defaults to `http://localhost:9000`. |
 | `sonar.projectName` | No | The name shown in SonarQube. Defaults to the project key. |
@@ -159,7 +167,8 @@ overrides any value set for them in `sonar-project.properties`:
 When you run `sonar-scanner` directly, these properties are not set for you, so set the test directories in
 `sonar-project.properties` if you want them indexed as test code.
 
-The issues are saved to `ballerina-static-code-analysis-results.json` at the project root, so add it to `.gitignore`.
+The issues are saved to `ballerina-static-code-analysis-results.json` in the directory `bal scan` runs in (the
+workspace root for a workspace), so add it to `.gitignore` there.
 
 ## Analyzing a Ballerina project
 
@@ -177,9 +186,13 @@ Once the analysis is done, the issues appear in the project on the SonarQube ser
 A workspace `Scan.toml` cannot have `[[platform]]` entries, so give each member package its own `Scan.toml` with the
 `sonarqube` entry. `bal scan` runs `sonar-scanner` once for each member, always in the directory `bal scan` runs in.
 When you run it from the workspace root, every member reads the workspace root's `sonar-project.properties` and reports
-to the same SonarQube project, so each member's analysis replaces the previous one. To report each member to its own
-project, set `sonarProjectPropertiesPath` in each member's `Scan.toml` to a properties file with its own
-`sonar.projectKey`, or run `bal scan --platforms=sonarqube` from each member's directory.
+to the same SonarQube project, so each member's analysis replaces the previous one.
+
+To report each member to its own project, run `bal scan --platforms=sonarqube` from each member's directory, with a
+`sonar-project.properties` that has its own `sonar.projectKey`. Pointing `sonarProjectPropertiesPath` at a per-member
+file while running from the workspace root is not enough: `sonar-scanner` still uses the workspace root as its base
+directory, so each project indexes the files of every member, `<member>/tests/**` is indexed as source code, and
+`sonar.projectVersion` is not set.
 
 ## Rule metadata
 
