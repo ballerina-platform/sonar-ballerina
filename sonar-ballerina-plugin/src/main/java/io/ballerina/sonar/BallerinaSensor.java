@@ -40,8 +40,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,12 +77,19 @@ class BallerinaSensor implements Sensor {
     // External analyzers do not report a severity, so their issues get the impact that matches Severity.MAJOR
     private static final org.sonar.api.issue.impact.Severity EXTERNAL_IMPACT_SEVERITY =
             org.sonar.api.issue.impact.Severity.MEDIUM;
+    private static final String SCAN_COMMAND = "bal scan --platform-triggered --platforms=sonarqube";
     private final Logger logger = LoggerFactory.getLogger(BallerinaSensor.class);
     private final BallerinaLanguage language;
+    private final String scanCommand;
     private final Set<String> externalRules = new HashSet<>();
 
     public BallerinaSensor(BallerinaLanguage language) {
+        this(language, SCAN_COMMAND);
+    }
+
+    BallerinaSensor(BallerinaLanguage language, String scanCommand) {
         this.language = language;
+        this.scanCommand = scanCommand;
     }
 
     @Override
@@ -113,7 +120,6 @@ class BallerinaSensor implements Sensor {
     }
 
     public void performLibraryCall(SensorContext context, Map<String, InputFile> pathAndInputFiles) {
-        logger.info("Analyzing Ballerina project");
         ProcessBuilder fileScan = new ProcessBuilder();
         fileScan.directory(context.fileSystem().baseDir());
         List<String> arguments = new ArrayList<>();
@@ -125,20 +131,25 @@ class BallerinaSensor implements Sensor {
             arguments.add("-c");
         }
 
-        arguments.add("bal scan --platform-triggered --platforms=sonarqube");
+        arguments.add(scanCommand);
         fileScan.command(arguments);
+        Path analyzedResultsFile = context.fileSystem().baseDir().toPath().resolve(ISSUES_FILE_PATH);
         try {
+            // A file left by an earlier scan must not be reported if this scan does not write a new one
+            Files.deleteIfExists(analyzedResultsFile);
             fileScan.inheritIO();
             Process process = fileScan.start();
             int exitCode = process.waitFor();
             if (exitCode == 0) {
-                String analyzedResultsFilePath = Paths.get(context.fileSystem().baseDir().getPath())
-                        .resolve(ISSUES_FILE_PATH)
-                        .toString();
-                String fileContent = getFileContent(analyzedResultsFilePath);
+                if (!Files.isRegularFile(analyzedResultsFile)) {
+                    throw new IllegalStateException("bal scan did not write the analysis results to "
+                            + analyzedResultsFile + "; see its output above for the cause");
+                }
+                String fileContent = getFileContent(analyzedResultsFile.toString());
                 reportFileContent(context, pathAndInputFiles, fileContent);
             } else {
-                logger.error("Failed to analyze Ballerina file batch with exit code: {}", exitCode);
+                throw new IllegalStateException("bal scan failed with exit code " + exitCode
+                        + "; see its output above for the cause");
             }
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Failed to analyze Ballerina file batch: ", e);
@@ -159,12 +170,9 @@ class BallerinaSensor implements Sensor {
                                    String fileContent) {
         try {
             JsonArray balScanOutput = JsonParser.parseString(fileContent).getAsJsonArray();
-            boolean reportingSuccessful = reportAnalysisIssues(context, balScanOutput, pathAndInputFiles);
-            if (reportingSuccessful) {
-                logger.info("Ballerina analysis successful!");
-                return;
+            if (!reportAnalysisIssues(context, balScanOutput, pathAndInputFiles)) {
+                logger.error("Unable to analyze Ballerina file batch!");
             }
-            logger.error("Unable to analyze Ballerina file batch!");
         } catch (JsonSyntaxException e) {
             throw new RuntimeException("Unable to report analysis results: " + e.getMessage(), e);
         }
