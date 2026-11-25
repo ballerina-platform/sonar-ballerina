@@ -36,10 +36,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
+import java.util.stream.Stream;
 
 import static io.ballerina.sonar.Constants.ISSUES_FILE_PATH;
 
@@ -140,30 +142,49 @@ public class BallerinaSensorTest extends AbstractSensorTest {
         assertIssue(issue, "ballerina:ballerina:1", issue.primaryLocation().message(), 21, 17, 21, 39);
     }
 
-    @Test(description = "Test that the BallerinaSensor does not report a results file left by an earlier scan")
-    void testBallerinaSensorIgnoresOldResultsFile() throws IOException {
-        // Without a Ballerina.toml, bal scan cannot write new results in any version
+    @Test(description = "Test that the BallerinaSensor fails, without reporting old results, when bal scan fails")
+    void testBallerinaSensorFailsWhenBalScanFails() throws IOException {
+        assertOldResultsNotReported(new BallerinaSensor(language(), "exit 3"), "bal scan failed with exit code 3;");
+    }
+
+    @Test(description = "Test that the BallerinaSensor fails, without reporting old results, when bal scan " +
+            "exits with 0 but does not write new results")
+    void testBallerinaSensorFailsWhenBalScanWritesNoResults() throws IOException {
+        assertOldResultsNotReported(new BallerinaSensor(language(), "exit 0"),
+                "bal scan did not write the analysis results");
+    }
+
+    private void assertOldResultsNotReported(BallerinaSensor sensor, String expectedMessagePrefix)
+            throws IOException {
         Path projectDir = Files.createTempDirectory("ballerina-project-with-old-report");
-        Path mainBal = Files.copy(testResources.resolve("ballerina-project-with-report").resolve("main.bal"),
-                projectDir.resolve("main.bal"));
-        String oldResults = Files.readString(testResources.resolve("ballerina-project-with-report")
-                .resolve("ballerina-static-code-analysis-results.json.template"))
-                .replace("__file_path__", mainBal.toAbsolutePath().toString().replace("\\", "\\\\"));
-        Path oldResultsFile = Files.writeString(projectDir.resolve(ISSUES_FILE_PATH), oldResults,
-                StandardCharsets.UTF_8);
-        SensorContextTester context = SensorContextTester.create(projectDir);
-        context.fileSystem().add(createInputFileFromPath(projectDir, "main.bal"));
-
         try {
-            sensor().execute(context);
-        } catch (IllegalStateException e) {
-            Assert.assertTrue(e.getMessage().startsWith("bal scan did not write the analysis results"),
-                    e.getMessage());
-        }
+            Path mainBal = Files.copy(testResources.resolve("ballerina-project-with-report").resolve("main.bal"),
+                    projectDir.resolve("main.bal"));
+            String oldResults = Files.readString(testResources.resolve("ballerina-project-with-report")
+                    .resolve("ballerina-static-code-analysis-results.json.template"))
+                    .replace("__file_path__", mainBal.toAbsolutePath().toString().replace("\\", "\\\\"));
+            Path oldResultsFile = Files.writeString(projectDir.resolve(ISSUES_FILE_PATH), oldResults,
+                    StandardCharsets.UTF_8);
+            SensorContextTester context = SensorContextTester.create(projectDir);
+            context.fileSystem().add(createInputFileFromPath(projectDir, "main.bal"));
 
-        Assert.assertTrue(context.allIssues().isEmpty());
-        Assert.assertTrue(context.allExternalIssues().isEmpty());
-        Assert.assertFalse(Files.exists(oldResultsFile));
+            IllegalStateException e = Assert.expectThrows(IllegalStateException.class,
+                    () -> sensor.execute(context));
+            Assert.assertTrue(e.getMessage().startsWith(expectedMessagePrefix), e.getMessage());
+            Assert.assertTrue(context.allIssues().isEmpty());
+            Assert.assertTrue(context.allExternalIssues().isEmpty());
+            Assert.assertFalse(Files.exists(oldResultsFile));
+        } finally {
+            deleteRecursively(projectDir);
+        }
+    }
+
+    private static void deleteRecursively(Path dir) throws IOException {
+        try (Stream<Path> paths = Files.walk(dir)) {
+            for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(path);
+            }
+        }
     }
 
     private void assertIssue(Issue issue, String ruleKey, String message, int startLine, int startLineOffset,

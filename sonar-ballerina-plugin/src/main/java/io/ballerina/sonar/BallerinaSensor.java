@@ -77,12 +77,19 @@ class BallerinaSensor implements Sensor {
     // External analyzers do not report a severity, so their issues get the impact that matches Severity.MAJOR
     private static final org.sonar.api.issue.impact.Severity EXTERNAL_IMPACT_SEVERITY =
             org.sonar.api.issue.impact.Severity.MEDIUM;
+    private static final String SCAN_COMMAND = "bal scan --platform-triggered --platforms=sonarqube";
     private final Logger logger = LoggerFactory.getLogger(BallerinaSensor.class);
     private final BallerinaLanguage language;
+    private final String scanCommand;
     private final Set<String> externalRules = new HashSet<>();
 
     public BallerinaSensor(BallerinaLanguage language) {
+        this(language, SCAN_COMMAND);
+    }
+
+    BallerinaSensor(BallerinaLanguage language, String scanCommand) {
         this.language = language;
+        this.scanCommand = scanCommand;
     }
 
     @Override
@@ -124,7 +131,7 @@ class BallerinaSensor implements Sensor {
             arguments.add("-c");
         }
 
-        arguments.add("bal scan --platform-triggered --platforms=sonarqube");
+        arguments.add(scanCommand);
         fileScan.command(arguments);
         Path analyzedResultsFile = context.fileSystem().baseDir().toPath().resolve(ISSUES_FILE_PATH);
         try {
@@ -141,7 +148,8 @@ class BallerinaSensor implements Sensor {
                 String fileContent = getFileContent(analyzedResultsFile.toString());
                 reportFileContent(context, pathAndInputFiles, fileContent);
             } else {
-                logger.error("Failed to analyze Ballerina file batch with exit code: {}", exitCode);
+                throw new IllegalStateException("bal scan failed with exit code " + exitCode
+                        + "; see its output above for the cause");
             }
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Failed to analyze Ballerina file batch: ", e);
