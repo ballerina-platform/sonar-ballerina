@@ -21,7 +21,9 @@ package io.ballerina.sonar.internal;
 import io.ballerina.sonar.SonarBallerinaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sonar.api.SonarRuntime;
 import org.sonar.api.config.Configuration;
+import org.sonar.api.platform.Server;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.io.Writer;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -38,9 +41,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 /**
  * Loads the rules of the Ballerina rule repository from the rule-info.json file of the scan tool.
@@ -49,10 +56,22 @@ import java.util.Properties;
  * overrides, and failing that, from the fallback URL bundled at build time. When both fetches fail, the rules are
  * loaded from the copy cached by the last successful fetch, and failing that, from the snapshot bundled with the
  * plugin.
+ * <p>
+ * The request to the primary URL carries the versions of the plugin, the SonarQube server and the scan tool, and the
+ * edition of the SonarQube server, as query parameters, so that the endpoint can serve the rules that match them. The
+ * server does not run the scan tool, so its version is taken from the {@value #SCAN_TOOL_VERSION_PROPERTY} server
+ * property, and is {@value #LATEST_SCAN_TOOL_VERSION} when the property is not set.
  */
 public final class RuleGenerator {
 
     public static final String RULE_INFO_URL_PROPERTY = "sonar.ballerina.ruleInfoUrl";
+    public static final String SCAN_TOOL_VERSION_PROPERTY = "sonar.ballerina.scanToolVersion";
+
+    static final String PLUGIN_VERSION_PARAM = "pluginVersion";
+    static final String SONAR_VERSION_PARAM = "sonarVersion";
+    static final String SONAR_EDITION_PARAM = "sonarEdition";
+    static final String SCAN_TOOL_VERSION_PARAM = "scanToolVersion";
+    static final String LATEST_SCAN_TOOL_VERSION = "latest";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RuleGenerator.class);
 
@@ -83,13 +102,19 @@ public final class RuleGenerator {
     /**
      * Loads the rules once, and returns the same rules on later calls.
      *
-     * @param configuration the server configuration, which may override the URL of rule-info.json
+     * @param configuration the server configuration, which may override the URL of rule-info.json and the scan tool
+     *                      version
+     * @param server        the SonarQube server, whose version is sent to the rule-info.json endpoint
+     * @param runtime       the SonarQube runtime, whose edition is sent to the rule-info.json endpoint
      * @return the rules of the Ballerina rule repository
      * @throws SonarBallerinaException if the rules cannot be loaded from any source
      */
-    public synchronized List<RuleMetadata> loadRules(Configuration configuration) throws SonarBallerinaException {
+    public synchronized List<RuleMetadata> loadRules(Configuration configuration, Server server, SonarRuntime runtime)
+            throws SonarBallerinaException {
         if (rules == null) {
-            List<URI> ruleInfoUris = getRuleInfoUris(configuration.get(RULE_INFO_URL_PROPERTY));
+            Map<String, String> endpointParams = getEndpointParams(configuration.get(SCAN_TOOL_VERSION_PROPERTY),
+                    server.getVersion(), runtime.getEdition().name().toLowerCase(Locale.ROOT));
+            List<URI> ruleInfoUris = getRuleInfoUris(configuration.get(RULE_INFO_URL_PROPERTY), endpointParams);
             rules = List.copyOf(loadRules(ruleInfoUris, DEFAULT_RULE_CACHE_PATH));
         }
         return List.copyOf(rules);
@@ -203,10 +228,27 @@ public final class RuleGenerator {
     }
 
     /**
-     * Returns the URLs to fetch rule-info.json from, in order: the overridden or bundled URL, then the fallback URL.
-     * An invalid override is skipped with a warning.
+     * Returns the query parameters sent to the rule-info.json endpoint. A blank scan tool version counts as not set.
      */
-    static List<URI> getRuleInfoUris(Optional<String> override) throws SonarBallerinaException {
+    static Map<String, String> getEndpointParams(Optional<String> scanToolVersion, String sonarVersion,
+                                                 String sonarEdition) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put(PLUGIN_VERSION_PARAM, getRequiredProperty(getBundledRuleInfoSource(), PLUGIN_VERSION_PARAM));
+        params.put(SONAR_VERSION_PARAM, sonarVersion);
+        params.put(SONAR_EDITION_PARAM, sonarEdition);
+        params.put(SCAN_TOOL_VERSION_PARAM, scanToolVersion.map(String::strip)
+                .filter(version -> !version.isEmpty())
+                .orElse(LATEST_SCAN_TOOL_VERSION));
+        return params;
+    }
+
+    /**
+     * Returns the URLs to fetch rule-info.json from, in order: the overridden or bundled URL, then the fallback URL.
+     * An invalid override is skipped with a warning. The endpoint parameters are added to the first URL only, unless
+     * it is the fallback URL, which serves a static file.
+     */
+    static List<URI> getRuleInfoUris(Optional<String> override, Map<String, String> endpointParams)
+            throws SonarBallerinaException {
         Properties source = getBundledRuleInfoSource();
         URI primary = toHttpUri(getRequiredProperty(source, "url"));
         Optional<String> overrideUrl = override.filter(u -> !u.isBlank());
@@ -219,7 +261,28 @@ public final class RuleGenerator {
             }
         }
         URI fallback = toHttpUri(getRequiredProperty(source, "fallbackUrl"));
-        return primary.equals(fallback) ? List.of(primary) : List.of(primary, fallback);
+        if (primary.equals(fallback)) {
+            return List.of(fallback);
+        }
+        return List.of(withQueryParams(primary, endpointParams), fallback);
+    }
+
+    private static URI withQueryParams(URI uri, Map<String, String> params) {
+        if (params.isEmpty()) {
+            return uri;
+        }
+        String query = params.entrySet().stream()
+                .map(param -> encode(param.getKey()) + "=" + encode(param.getValue()))
+                .collect(Collectors.joining("&"));
+        String base = uri.toString();
+        if (uri.getRawFragment() != null) {
+            base = base.substring(0, base.indexOf('#'));
+        }
+        return URI.create(base + (uri.getRawQuery() == null ? "?" : "&") + query);
+    }
+
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private static URI toHttpUri(String uri) throws SonarBallerinaException {

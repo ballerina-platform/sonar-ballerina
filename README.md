@@ -213,6 +213,17 @@ A source that cannot be reached within the timeout, does not respond with HTTP 2
 skipped with a warning. If none of the sources can be loaded, the SonarQube server fails to start. The rules are loaded
 once per server start, so restart the server to pick up changes to `rule-info.json`.
 
+The request to the first URL, including a URL set with `sonar.ballerina.ruleInfoUrl`, carries these query parameters, so that the endpoint can serve the rules that match the server. The fallback URL serves a static file, so it receives none of them.
+
+| Parameter | Value |
+|-----------|-------|
+| `pluginVersion` | The version of this plugin, detected automatically. |
+| `sonarVersion` | The version of the SonarQube server, such as `26.11.0.134175`, detected automatically. |
+| `sonarEdition` | The edition of the SonarQube server: `community`, `developer`, `enterprise` or `datacenter`, detected automatically. |
+| `scanToolVersion` | The version of the Ballerina scan tool that the projects are analyzed with, such as `0.14.0`. The SonarQube server does not run the scan tool, so set it with the `sonar.ballerina.scanToolVersion` property in `conf/sonar.properties`. Defaults to `latest`. |
+
+For example, `https://example.com/rule-info.json?pluginVersion=0.4.1&sonarVersion=26.11.0.134175&sonarEdition=community&scanToolVersion=latest`. Since the rules are loaded once per server start, restart the server after changing `sonar.ballerina.scanToolVersion`. The cached copy and the bundled snapshot do not depend on the scan tool version, so they are used as they are when the URLs cannot be loaded.
+
 To refresh the bundled snapshot from `ruleInfoUrl`, run `./gradlew :sonar-ballerina-plugin:updateRuleInfoSnapshot`, and
 review the diff before committing it.
 
