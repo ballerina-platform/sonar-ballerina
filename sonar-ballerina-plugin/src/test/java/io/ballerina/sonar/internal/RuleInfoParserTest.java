@@ -195,20 +195,27 @@ public class RuleInfoParserTest {
     @Test(description = "The rule-info.json URL is bundled, can be overridden by a valid HTTP(S) URL, and is "
             + "followed by the fallback URL")
     void testRuleInfoUris() throws SonarBallerinaException {
-        List<URI> bundled = RuleGenerator.getRuleInfoUris(Optional.empty());
+        List<URI> bundled = RuleGenerator.getRuleInfoUris(Optional.empty(), Map.of());
         Assert.assertFalse(bundled.isEmpty());
         for (URI uri : bundled) {
             Assert.assertEquals(uri.getScheme(), "https");
             Assert.assertTrue(uri.getPath().endsWith("/rule-info.json"), uri.toString());
         }
         URI official = bundled.get(bundled.size() - 1);
-        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(" ")), bundled);
-        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of("http://localhost:8080/rule-info.json")),
+        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(" "), Map.of()), bundled);
+        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of("http://localhost:8080/rule-info.json"),
+                        Map.of()),
                 List.of(URI.create("http://localhost:8080/rule-info.json"), official));
-        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(official.toString())), List.of(official));
+        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(official.toString()), Map.of()),
+                List.of(official));
+        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(official.toString()), Map.of("a", "b")),
+                List.of(official));
+        Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of("http://localhost:8080/rule-info.json"),
+                        Map.of("a", "b c")),
+                List.of(URI.create("http://localhost:8080/rule-info.json?a=b+c"), official));
         for (String invalid : List.of("file:///etc/passwd", "https://exa mple.com", "example.com/rule-info.json",
                 "https:foo")) {
-            Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(invalid)), bundled, invalid);
+            Assert.assertEquals(RuleGenerator.getRuleInfoUris(Optional.of(invalid), Map.of()), bundled, invalid);
         }
     }
 }

@@ -75,10 +75,12 @@ tasks.register('prepareRuleInfo') {
     def snapshot = ruleInfoSnapshot
     def url = ruleInfoUrl
     def fallbackUrl = ruleInfoFallbackUrl
+    def pluginVersion = project.version.toString()
     def outputDir = generatedRuleInfoDir
     inputs.file(snapshot)
     inputs.property('ruleInfoUrl', url)
     inputs.property('ruleInfoFallbackUrl', fallbackUrl)
+    inputs.property('pluginVersion', pluginVersion)
     outputs.dir(outputDir)
     mustRunAfter 'updateRuleInfoSnapshot'
 
@@ -86,8 +88,8 @@ tasks.register('prepareRuleInfo') {
         def targetDir = outputDir.get().dir('rule-info').asFile
         targetDir.mkdirs()
         new File(targetDir, 'rule-info.json').bytes = snapshot.bytes
-        new File(targetDir, 'source.properties').setText("url=${url}\nfallbackUrl=${fallbackUrl}\n",
-                'ISO-8859-1')
+        new File(targetDir, 'source.properties').setText("url=${url}\nfallbackUrl=${fallbackUrl}\n"
+                + "pluginVersion=${pluginVersion}\n", 'ISO-8859-1')
     }
 }
 

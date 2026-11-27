@@ -34,12 +34,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RuleGeneratorTest {
 
     private static final String PRIMARY_RULE_INFO = "[{\"title\": \"Primary\", \"sqKey\": \"ballerina:1\"}]";
     private static final String FALLBACK_RULE_INFO = "[{\"title\": \"Fallback\", \"sqKey\": \"ballerina:1\"}]";
 
+    private final Map<String, String> receivedQueries = new ConcurrentHashMap<>();
     private HttpServer server;
     private Path cacheDir;
     private Path cachePath;
@@ -125,12 +130,40 @@ public class RuleGeneratorTest {
         Assert.assertFalse(Files.exists(cachePath));
     }
 
+    @Test(description = "The plugin, SonarQube and scan tool versions and the SonarQube edition are sent to the "
+            + "primary URL only")
+    void testEndpointParams() throws SonarBallerinaException {
+        Map<String, String> params = RuleGenerator.getEndpointParams(Optional.empty(), "26.11.0.134175", "community");
+        Assert.assertEquals(params.keySet().stream().toList(),
+                List.of("pluginVersion", "sonarVersion", "sonarEdition", "scanToolVersion"));
+        Assert.assertFalse(params.get("pluginVersion").isBlank());
+
+        List<URI> uris = RuleGenerator.getRuleInfoUris(Optional.of(uri("/primary?channel=stable#rules").toString()),
+                params);
+        load(uris);
+        Assert.assertEquals(receivedQueries.get("/primary"), "channel=stable&pluginVersion="
+                + params.get("pluginVersion") + "&sonarVersion=26.11.0.134175&sonarEdition=community"
+                + "&scanToolVersion=latest");
+        Assert.assertNull(uris.get(uris.size() - 1).getQuery());
+    }
+
+    @Test(description = "The scan tool version is taken from the server property, and is latest when it is not set")
+    void testScanToolVersion() {
+        Assert.assertEquals(RuleGenerator.getEndpointParams(Optional.empty(), "v", "e").get("scanToolVersion"),
+                "latest");
+        Assert.assertEquals(RuleGenerator.getEndpointParams(Optional.of(" "), "v", "e").get("scanToolVersion"),
+                "latest");
+        Assert.assertEquals(RuleGenerator.getEndpointParams(Optional.of(" 0.15.0 "), "v", "e").get("scanToolVersion"),
+                "0.15.0");
+    }
+
     private List<RuleMetadata> load(List<URI> ruleInfoUris) throws SonarBallerinaException {
         return RuleGenerator.getInstance().loadRules(ruleInfoUris, cachePath);
     }
 
     private void serve(String path, int status, String body) {
         server.createContext(path, exchange -> {
+            receivedQueries.put(path, Objects.toString(exchange.getRequestURI().getRawQuery(), ""));
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(status, bytes.length);
             try (OutputStream out = exchange.getResponseBody()) {

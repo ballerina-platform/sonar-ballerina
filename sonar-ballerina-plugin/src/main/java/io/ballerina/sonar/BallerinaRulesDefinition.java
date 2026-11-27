@@ -21,7 +21,9 @@ import io.ballerina.sonar.internal.RuleGenerator;
 import io.ballerina.sonar.internal.RuleMetadata;
 import io.ballerina.sonar.internal.RuleMetadata.Remediation;
 import io.ballerina.sonar.internal.RuleMetadata.RuleDescription;
+import org.sonar.api.SonarRuntime;
 import org.sonar.api.config.Configuration;
+import org.sonar.api.platform.Server;
 import org.sonar.api.server.rule.RuleDescriptionSectionBuilder;
 import org.sonar.api.server.rule.RulesDefinition;
 
@@ -37,9 +39,13 @@ import static org.sonar.api.server.rule.RuleDescriptionSection.RuleDescriptionSe
 public class BallerinaRulesDefinition implements RulesDefinition {
 
     private final Configuration configuration;
+    private final Server server;
+    private final SonarRuntime runtime;
 
-    public BallerinaRulesDefinition(Configuration configuration) {
+    public BallerinaRulesDefinition(Configuration configuration, Server server, SonarRuntime runtime) {
         this.configuration = configuration;
+        this.server = server;
+        this.runtime = runtime;
     }
 
     @Override
@@ -48,7 +54,7 @@ public class BallerinaRulesDefinition implements RulesDefinition {
         repository.setName(RULE_REPOSITORY_NAME);
         List<RuleMetadata> rules;
         try {
-            rules = RuleGenerator.getInstance().loadRules(configuration);
+            rules = RuleGenerator.getInstance().loadRules(configuration, server, runtime);
         } catch (SonarBallerinaException e) {
             throw new IllegalStateException("Error generating rules for Ballerina", e);
         }

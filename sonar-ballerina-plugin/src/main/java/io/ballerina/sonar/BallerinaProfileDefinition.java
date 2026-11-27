@@ -19,7 +19,9 @@ package io.ballerina.sonar;
 
 import io.ballerina.sonar.internal.RuleGenerator;
 import io.ballerina.sonar.internal.RuleMetadata;
+import org.sonar.api.SonarRuntime;
 import org.sonar.api.config.Configuration;
+import org.sonar.api.platform.Server;
 import org.sonar.api.server.profile.BuiltInQualityProfilesDefinition;
 
 import java.util.List;
@@ -36,9 +38,13 @@ import static io.ballerina.sonar.Constants.RULE_REPOSITORY_KEY;
 public class BallerinaProfileDefinition implements BuiltInQualityProfilesDefinition {
 
     private final Configuration configuration;
+    private final Server server;
+    private final SonarRuntime runtime;
 
-    public BallerinaProfileDefinition(Configuration configuration) {
+    public BallerinaProfileDefinition(Configuration configuration, Server server, SonarRuntime runtime) {
         this.configuration = configuration;
+        this.server = server;
+        this.runtime = runtime;
     }
 
     @Override
@@ -47,7 +53,7 @@ public class BallerinaProfileDefinition implements BuiltInQualityProfilesDefinit
                 LANGUAGE_KEY);
         RuleGenerator ruleGenerator = RuleGenerator.getInstance();
         try {
-            List<RuleMetadata> ruleMetadata = ruleGenerator.loadRules(configuration);
+            List<RuleMetadata> ruleMetadata = ruleGenerator.loadRules(configuration, server, runtime);
             for (RuleMetadata metadata : ruleMetadata) {
                 ballerinaQualityProfile.activateRule(RULE_REPOSITORY_KEY, metadata.id());
             }
